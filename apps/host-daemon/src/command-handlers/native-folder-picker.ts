@@ -7,6 +7,17 @@ import { ExpectedCommandDispatchError } from "../command-dispatch-support.js";
 
 const execFileAsync = execHostFile;
 
+export const CHOOSE_FOLDER_SCRIPT = [
+  "activate",
+  "with timeout of 86400 seconds",
+  "try",
+  'POSIX path of (choose folder with prompt "Choose a project folder")',
+  "on error number -128",
+  'return ""',
+  "end try",
+  "end timeout",
+].join("\n");
+
 export async function pickHostFolder(): Promise<
   HostDaemonOnlineRpcResult<"host.pick_folder">
 > {
@@ -21,10 +32,7 @@ export async function pickHostFolder(): Promise<
   try {
     const result = await execFileAsync(
       "osascript",
-      [
-        "-e",
-        'try\nPOSIX path of (choose folder with prompt "Choose a project folder")\non error number -128\nreturn ""\nend try',
-      ],
+      ["-e", CHOOSE_FOLDER_SCRIPT],
       {
         env: sanitizeInheritedChildProcessEnv({ env: process.env }),
       },
