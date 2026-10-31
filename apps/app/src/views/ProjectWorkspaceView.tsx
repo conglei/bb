@@ -126,13 +126,18 @@ export function ProjectWorkspaceView({
     null;
 
   return (
-    <PageShell contentClassName="pt-4 md:pt-5">
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col md:-mx-5 md:-mt-5">
+      <div className="mx-auto w-full max-w-[760px] shrink-0 px-4 pt-2">
         <ProjectViewTabs
           projectId={projectId}
           views={projectViews}
           activeViewKey={viewKey}
         />
+      </div>
+      <PageShell
+        shellClassName="mx-0 mt-0 md:mx-0 md:mt-0"
+        contentClassName="pt-4 md:pt-5"
+      >
         {view === null ? (
           pluginsSettled && projectPluginsSettled ? (
             <EmptyStatePanel
@@ -161,7 +166,7 @@ export function ProjectWorkspaceView({
             </PluginSlotMount>
           </div>
         )}
-      </div>
-    </PageShell>
+      </PageShell>
+    </div>
   );
 }

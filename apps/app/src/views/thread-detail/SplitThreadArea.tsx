@@ -1371,6 +1371,7 @@ function NonThreadPaneContent({
         !isBoundedPane &&
           !panel &&
           content.kind !== "new-thread" &&
+          content.kind !== "project-view" &&
           "pt-(--bb-window-frame-top)",
       )}
     >
