@@ -152,6 +152,25 @@ rows. `onChange` fires for every write path, only when that project's
 effective values changed. Rows are deleted with the project and when the
 plugin is removed.
 
+### bb.experimental_projectScope
+
+For a plugin whose manifest sets `bb.experimental_projectScope: "single"`
+(see quickstart.md), the plugin is on in at most one project, its owner.
+`bb.experimental_projectScope.get()` returns that project or `null` (types
+`ExperimentalPluginProjectScope`, `ExperimentalPluginOwnerProject`):
+
+```ts
+const owner = await bb.experimental_projectScope.get(); // load-safe; null while off everywhere, always null for "any" plugins
+// owner: { projectId, name, localPaths } — localPaths are the project's checkouts on the bb server's own machine ([] elsewhere)
+bb.experimental_projectScope.onChange((next, previous) => {}); // turned on (previous null), moved, or turned off (next null)
+```
+
+Turning the plugin on in another project moves it there: the previous owner
+is turned off, both projects get `project-plugins-changed`, and `onChange`
+fires once with both. Use the owner for state the plugin keeps once (the
+"master" project it works from), and `bb.experimental_projectSettings` for
+values every project may hold.
+
 ### bb.storage
 
 - `bb.storage.kv` — namespaced JSON key-value rows in bb.db:

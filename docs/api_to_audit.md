@@ -2516,6 +2516,74 @@ Docs: `quickstart.md` (manifest), `frontend-core-slots.md`
 4. **Cache scope.** The server cache is per process and cleared on writes and
    plugin removal; confirm nothing else writes the table.
 
+## Manifest `bb.experimental_projectScope`
+
+`"any" | "single"`, default `"any"`. `"single"` makes the plugin project-bound:
+it is on in at most one project, its owner, and off everywhere else. The
+manifest reader forces `projectDefault` to `"off"` for it and rejects a
+manifest that also sets `experimental_projectDefault: "on"`. The owner is the
+single `project_plugin_states` row with `enabled = true` for the plugin
+(`getPluginOwnerProjectId` in
+`apps/server/src/services/plugins/project-plugin-scope.ts`). Enabling the
+plugin in another project through any write path (`PUT
+/projects/:id/plugins/:pluginId`, `sdk.projects.plugins.set`, `bb project
+plugins enable`, the project settings "Plugins" section) deletes every other
+project's row first, so the write is a move; it invalidates the scope cache
+and publishes `project-plugins-changed` for the new owner and the previous
+one. `enabled: false` or `null` on the owner clears the row (no owner);
+either on a non-owner only clears that project's row.
+`InstalledPlugin.projectScope` and `ProjectPluginEntry.scope`,
+`ownerProjectId`, `ownerProjectName` surface it to clients; the CLI `enable`
+output names the previous owner. Core has no `"single"` plugin; the Kept
+plugin is the first consumer.
+
+Docs: `quickstart.md` (manifest), `backend-foundation.md`
+(`bb.experimental_projectScope`).
+
+**Audit before stabilizing.**
+
+1. **Scope changes across versions.** A plugin that goes from `"any"` to
+   `"single"` with several enabled rows keeps them until the next write; the
+   most recently updated row counts as the owner. Decide whether an update
+   should normalize the rows.
+2. **Owner deletion.** Deleting the owning project cascades its row away
+   without an `onChange`; decide whether the plugin should hear about it.
+3. **Personal project.** The personal project can own a single-scope plugin
+   although it has no project page; confirm that is intended.
+
+## `bb.experimental_projectScope` (`@get-bb/plugin-sdk`)
+
+`bb.experimental_projectScope.get()` returns the owning project of a
+`bb.experimental_projectScope: "single"` plugin as
+`{ projectId, name, localPaths } | null` (`ExperimentalPluginOwnerProject`),
+`null` while it is off everywhere and always `null` for an `"any"` plugin.
+`localPaths` are the project's `local_path` sources whose host is the bb
+server's own machine, read from the `host-id` file in the server data dir
+(`readPrimaryHostIdFromDataDir`); the list is empty when that host is not
+enrolled or the project has no checkout there. `onChange((next, previous) =>
+…)` fires once per owner change through any write path: turned on (`previous`
+is `null`), moved, or turned off (`next` is `null`). The scope service calls
+`PluginService.projectOwnerChanged`, which forwards to the loaded plugin's
+listeners with both projects resolved; listener errors are logged, not
+thrown. `get()` is load-safe. The fake host exposes
+`experimental_ownerProject` (option) and
+`harness.behavior.experimental_setOwnerProject(project | null)` (driver);
+the owner survives `lifecycle.reload`. Core has no caller; the Kept plugin
+is the first consumer.
+
+Docs: `backend-foundation.md`, `testing.md`.
+
+**Audit before stabilizing.**
+
+1. **Local paths.** `localPaths` are the only host-specific field; decide
+   whether the owner should carry every source with its host id instead, so
+   a plugin on a remote host can find its checkout too.
+2. **Owner deletion.** See the manifest entry: a deleted owner cascades
+   without `onChange`.
+3. **Startup.** A plugin learns its owner only by calling `get()`; decide
+   whether the factory should receive it or `onChange` should fire once at
+   load.
+
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** There are no consumers, and item 5 is

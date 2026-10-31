@@ -38,6 +38,7 @@ const GUIDE: InstalledPlugin = {
   hasSettings: false,
   hasProjectSettings: false,
   projectDefault: "on",
+  projectScope: "any",
   app: { hasApp: false, bundle: null },
   logoUrl: null,
   logoDarkUrl: null,

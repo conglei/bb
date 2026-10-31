@@ -1842,6 +1842,7 @@ describe("thread runtime config", () => {
               name: "On",
               icon: null,
               projectDefault: "on",
+              projectScope: "any",
               hasProjectSettings: false,
             },
             {
@@ -1849,6 +1850,7 @@ describe("thread runtime config", () => {
               name: "Off",
               icon: null,
               projectDefault: "on",
+              projectScope: "any",
               hasProjectSettings: false,
             },
           ],

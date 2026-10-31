@@ -272,6 +272,16 @@ export interface PluginService {
   handleUncaughtException(error: unknown): boolean;
   list(): InstalledPlugin[];
   listProjectScopedPlugins(): ProjectScopedPlugin[];
+  /**
+   * Fired by the project plugin scope after a `"single"` plugin's owning
+   * project changed; forwards to the plugin's
+   * `bb.experimental_projectScope.onChange` listeners.
+   */
+  projectOwnerChanged(args: {
+    pluginId: string;
+    previousOwnerProjectId: string | null;
+    ownerProjectId: string | null;
+  }): void;
   getDisplayName(id: string): string;
   providerCatalog(): Array<{
     id: string;
@@ -1147,6 +1157,10 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
             loadedPlugin?.manifest.projectDefault ??
             identity?.manifest.projectDefault ??
             "on",
+          projectScope:
+            loadedPlugin?.manifest.projectScope ??
+            identity?.manifest.projectScope ??
+            "any",
           app: appBundles.get(row.id)?.state ?? { hasApp: false, bundle: null },
           logoUrl: brandingSet?.logo?.url ?? null,
           logoDarkUrl: brandingSet?.logoDark?.url ?? null,
@@ -2338,9 +2352,14 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           name: plugin.manifest.name,
           icon: plugin.manifest.branding.icon ?? null,
           projectDefault: plugin.manifest.projectDefault,
+          projectScope: plugin.manifest.projectScope,
           hasProjectSettings:
             Object.keys(plugin.handle.projectSettings.descriptors).length > 0,
         }));
+    },
+
+    projectOwnerChanged(args) {
+      loaded.get(args.pluginId)?.handle.projectScope.notifyOwnerChanged(args);
     },
 
     listSkillRootContributions() {

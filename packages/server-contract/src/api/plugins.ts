@@ -253,6 +253,13 @@ export const installedPluginSchema = z.object({
    * falls back to "on", which is what every plugin had before the field.
    */
   projectDefault: z.enum(["on", "off"]).default("on"),
+  /**
+   * The manifest's `bb.experimental_projectScope`: `"single"` binds the
+   * plugin to one owning project (it is off everywhere else); `"any"` lets
+   * each project turn it on. Older servers omit it, so a reader falls back
+   * to "any".
+   */
+  projectScope: z.enum(["any", "single"]).default("any"),
   app: pluginAppStateSchema,
   logoUrl: z.string().nullable(),
   logoDarkUrl: z.string().nullable(),

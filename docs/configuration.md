@@ -810,16 +810,16 @@ ui_preference_conflict`. Read and write them with `bb settings ui
 list|get|set|reset` or `sdk.system.uiPreferences` (see
 `bb guide customization`).
 
-| Key                           | Value                                                                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sidebar.threadListProvider`  | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one |
-| `sidebar.navigationProvider`  | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`       |
-| `sidebar.pluginPanelOrder`    | Navigation destination order                                                                                                                           |
-| `sidebar.visiblePluginPanels` | Navigation destinations shown, or `null` for every destination                                                                                         |
-| `sidebar.footerOrder`         | Footer action order                                                                                                                                    |
-| `sidebar.hiddenFooterItems`   | Footer actions moved into More                                                                                                                         |
-| `threadContextCard.pinned`   | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header |
-| `infoPanel.collapsedSections` | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)          |
+| Key                           | Value                                                                                                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidebar.threadListProvider`  | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one    |
+| `sidebar.navigationProvider`  | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`          |
+| `sidebar.pluginPanelOrder`    | Navigation destination order                                                                                                                              |
+| `sidebar.visiblePluginPanels` | Navigation destinations shown, or `null` for every destination                                                                                            |
+| `sidebar.footerOrder`         | Footer action order                                                                                                                                       |
+| `sidebar.hiddenFooterItems`   | Footer actions moved into More                                                                                                                            |
+| `threadContextCard.pinned`    | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header |
+| `infoPanel.collapsedSections` | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)             |
 
 A legacy `__builtin__` thread list selection resolves to the bundled plugin.
 Footer IDs are `builtin:settings` (top list layout only), `builtin:mobile`,
@@ -1036,6 +1036,15 @@ project's choice). A project with no stored choice uses the plugin manifest's
 plugin that is off for a project contributes no project views, agent tools,
 instructions, skills, provider environment or dispatch hooks there, and its
 tool calls from that project's threads are refused.
+
+A plugin whose manifest sets `bb.experimental_projectScope: "single"` is
+project-bound: it is on in at most one project, its owner, and off everywhere
+else (its `experimental_projectDefault` is always `"off"`; declaring `"on"`
+is a manifest error). Enabling it in another project moves it there and turns
+the previous owner off; `bb project plugins list` shows the scope and owner,
+and the project settings Plugins section offers "Move here" or "Turn on here"
+instead of a switch. The plugin reads its owner with
+`bb.experimental_projectScope`.
 
 ### Multi-plugin repositories
 

@@ -557,6 +557,47 @@ describe("settings", () => {
     await reloaded.harness.dispose();
   });
 
+  it("tracks the owning project of a project-bound plugin", async () => {
+    const seeded = createFakePluginHost({
+      experimental_ownerProject: {
+        projectId: "proj_a",
+        name: "Alpha",
+        localPaths: ["/srv/alpha"],
+      },
+    });
+    expect(await seeded.bb.experimental_projectScope.get()).toEqual({
+      projectId: "proj_a",
+      name: "Alpha",
+      localPaths: ["/srv/alpha"],
+    });
+    await seeded.harness.dispose();
+
+    const { bb, harness } = createFakePluginHost();
+    expect(await bb.experimental_projectScope.get()).toBeNull();
+    const changes: Array<{ next: unknown; previous: unknown }> = [];
+    bb.experimental_projectScope.onChange((next, previous) => {
+      changes.push({ next, previous });
+    });
+
+    const alpha = { projectId: "proj_a", name: "Alpha", localPaths: [] };
+    const beta = { projectId: "proj_b", name: "Beta", localPaths: ["/b"] };
+    harness.behavior.experimental_setOwnerProject(alpha);
+    harness.behavior.experimental_setOwnerProject({ ...alpha });
+    harness.behavior.experimental_setOwnerProject(beta);
+    harness.behavior.experimental_setOwnerProject(null);
+    expect(changes).toEqual([
+      { next: alpha, previous: null },
+      { next: beta, previous: alpha },
+      { next: null, previous: beta },
+    ]);
+    expect(await bb.experimental_projectScope.get()).toBeNull();
+
+    harness.behavior.experimental_setOwnerProject(beta);
+    const reloaded = await harness.lifecycle.reload(() => {});
+    expect(await reloaded.bb.experimental_projectScope.get()).toEqual(beta);
+    await reloaded.harness.dispose();
+  });
+
   it("refuses secret project settings and duplicate keys", () => {
     const { bb } = createFakePluginHost();
     expect(() =>

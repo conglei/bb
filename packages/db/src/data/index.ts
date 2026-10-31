@@ -47,7 +47,9 @@ export {
 export {
   deleteProjectPluginState,
   deleteProjectPluginStatesForPlugin,
+  deleteProjectPluginStatesForPluginExcept,
   getProjectPluginState,
+  listEnabledProjectIdsForPlugin,
   listProjectPluginStates,
   upsertProjectPluginState,
 } from "./project-plugin-states.js";

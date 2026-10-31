@@ -776,6 +776,12 @@ function registerProjectPluginCommands(
             opts: ProjectPluginsCommandOptions,
           ) => {
             const sdk = createCliBbSdk(getUrl());
+            const before =
+              enabled === true
+                ? (await sdk.projects.plugins.list({ projectId })).find(
+                    (item) => item.pluginId === pluginId,
+                  )
+                : undefined;
             const entries = await sdk.projects.plugins.set({
               projectId,
               pluginId,
@@ -784,9 +790,20 @@ function registerProjectPluginCommands(
             const entry = entries.find((item) => item.pluginId === pluginId);
             if (outputJson(opts, entry ?? { pluginId, projectId })) return;
             console.log(
-              entry === undefined
-                ? `Plugin ${pluginId} override cleared for project ${projectId}`
-                : `Plugin ${pluginId} is ${entry.enabled ? "on" : "off"} for project ${projectId} (${entry.source === "project" ? "project override" : "plugin default"})`,
+              formatProjectPluginStateLine({
+                projectId,
+                pluginId,
+                entry,
+                previousOwner:
+                  before?.scope === "single" &&
+                  before.ownerProjectId !== null &&
+                  before.ownerProjectId !== projectId
+                    ? {
+                        projectId: before.ownerProjectId,
+                        name: before.ownerProjectName,
+                      }
+                    : null,
+              }),
             );
           },
         ),
@@ -801,20 +818,58 @@ function registerProjectPluginCommands(
   );
 }
 
+export function formatProjectPluginOwner(
+  entry: Pick<
+    ProjectPluginEntry,
+    "scope" | "ownerProjectId" | "ownerProjectName"
+  >,
+): string {
+  if (entry.scope !== "single") return "-";
+  if (entry.ownerProjectId === null) return "none";
+  return entry.ownerProjectName === null
+    ? entry.ownerProjectId
+    : `${entry.ownerProjectName} (${entry.ownerProjectId})`;
+}
+
+export function formatProjectPluginStateLine(args: {
+  projectId: string;
+  pluginId: string;
+  entry: ProjectPluginEntry | undefined;
+  previousOwner: { projectId: string; name: string | null } | null;
+}): string {
+  const { projectId, pluginId, entry, previousOwner } = args;
+  if (entry === undefined) {
+    return `Plugin ${pluginId} override cleared for project ${projectId}`;
+  }
+  const state = `Plugin ${pluginId} is ${entry.enabled ? "on" : "off"} for project ${projectId} (${entry.source === "project" ? "project override" : "plugin default"})`;
+  if (entry.scope !== "single") return state;
+  if (entry.enabled && previousOwner !== null) {
+    const previousLabel =
+      previousOwner.name === null
+        ? previousOwner.projectId
+        : `${previousOwner.name} (${previousOwner.projectId})`;
+    return `${state}; moved from project ${previousLabel}, where it is now off`;
+  }
+  if (entry.enabled) {
+    return `${state}; this project owns it and it is off everywhere else`;
+  }
+  return `${state}; owner: ${formatProjectPluginOwner(entry)}`;
+}
+
 function printProjectPluginTable(entries: ProjectPluginEntry[]): void {
+  const head = ["PLUGIN", "NAME", "STATE", "SOURCE", "SCOPE", "OWNER"];
   const rows = entries.map((entry) => [
     entry.pluginId,
     entry.name,
     entry.enabled ? "on" : "off",
     entry.source === "project" ? "project override" : "plugin default",
+    entry.scope,
+    formatProjectPluginOwner(entry),
   ]);
   printBorderlessTable(
     {
-      head: ["PLUGIN", "NAME", "STATE", "SOURCE"],
-      colWidths: columnWidths(
-        [["PLUGIN", "NAME", "STATE", "SOURCE"], ...rows],
-        [4, 4, 4, 4],
-      ),
+      head,
+      colWidths: columnWidths([head, ...rows], [4, 4, 4, 4, 4, 4]),
       trimTrailingWhitespace: true,
     },
     rows,

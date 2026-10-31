@@ -10,6 +10,11 @@ import {
   type ThreadQueuedMessage,
 } from "@bb/domain";
 import { logPluginBuildWarnings } from "./plugin-log.js";
+import {
+  describeOwnerProject,
+  resolvePluginOwnerProject,
+} from "./project-plugin-scope.js";
+import { readPrimaryHostIdFromDataDir } from "../hosts/primary-host.js";
 import type { MachineEnrollmentService } from "../machines/machine-services.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import {
@@ -1807,6 +1812,24 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
       },
       projectSettingsChanged: (projectId) => {
         deps.onProjectSettingsChanged?.({ pluginId: row.id, projectId });
+      },
+      projectScope: {
+        resolveOwner: () =>
+          manifest.projectScope === "single"
+            ? resolvePluginOwnerProject(deps.db, {
+                pluginId: row.id,
+                localHostId: readPrimaryHostIdFromDataDir({
+                  dataDir: deps.dataDir,
+                }),
+              })
+            : null,
+        describeProject: (projectId) =>
+          describeOwnerProject(deps.db, {
+            projectId,
+            localHostId: readPrimaryHostIdFromDataDir({
+              dataDir: deps.dataDir,
+            }),
+          }),
       },
       reportNeedsConfiguration: (message) => {
         reportNeedsConfiguration(row.id, message);

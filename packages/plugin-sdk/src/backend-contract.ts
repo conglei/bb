@@ -219,6 +219,45 @@ export interface ExperimentalPluginProjectSettings {
   ): ExperimentalPluginProjectSettingsHandle<Ds>;
 }
 
+/**
+ * The project that owns a plugin whose manifest declares
+ * `bb.experimental_projectScope: "single"`.
+ */
+export interface ExperimentalPluginOwnerProject {
+  projectId: string;
+  name: string;
+  /**
+   * The project's local checkout paths on the machine the bb server runs
+   * on, in source order. Empty when the project has no local source there,
+   * or when the server's own host is not enrolled yet.
+   */
+  localPaths: string[];
+}
+
+/**
+ * The owning project of a project-bound plugin. Experimental: see
+ * docs/api_to_audit.md.
+ */
+export interface ExperimentalPluginProjectScope {
+  /**
+   * The project that currently owns this plugin: the one project where a
+   * `"single"`-scope plugin is turned on. `null` while it is off everywhere,
+   * and always `null` for a plugin whose scope is `"any"`. Load-safe.
+   */
+  get(): Promise<ExperimentalPluginOwnerProject | null>;
+  /**
+   * Fires after the owner changes through any write path: turned on in a
+   * project (`previous` is `null`), moved to another project, or turned off
+   * in the owner (`next` is `null`). Never fires for an `"any"` plugin.
+   */
+  onChange(
+    listener: (
+      next: ExperimentalPluginOwnerProject | null,
+      previous: ExperimentalPluginOwnerProject | null,
+    ) => void,
+  ): void;
+}
+
 // ---------------------------------------------------------------------------
 // Storage (design §4.3).
 // ---------------------------------------------------------------------------
@@ -2294,6 +2333,11 @@ export interface BbPluginApi {
    * docs/api_to_audit.md.
    */
   readonly experimental_projectSettings: ExperimentalPluginProjectSettings;
+  /**
+   * The owning project of a `bb.experimental_projectScope: "single"` plugin.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  readonly experimental_projectScope: ExperimentalPluginProjectScope;
   /** Namespaced KV + per-plugin database (design §4.3). */
   readonly storage: PluginStorage;
   /** HTTP routes under /api/v1/plugins/<id>/http/* (design §4.6). */

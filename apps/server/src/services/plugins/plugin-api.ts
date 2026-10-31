@@ -41,6 +41,8 @@ import type {
   PluginCliContext,
   PluginCliResult,
   PluginEnvironments,
+  ExperimentalPluginOwnerProject,
+  ExperimentalPluginProjectScope,
   ExperimentalPluginProjectSettings,
   PluginHooks,
   PluginHookHandler,
@@ -149,6 +151,24 @@ import {
   type PluginProjectSettingsListener,
   type PluginProjectSettingsRecord,
 } from "./plugin-project-settings.js";
+
+export interface PluginProjectScopeRecord {
+  listeners: Array<
+    (
+      next: ExperimentalPluginOwnerProject | null,
+      previous: ExperimentalPluginOwnerProject | null,
+    ) => void
+  >;
+  notifyOwnerChanged(change: {
+    previousOwnerProjectId: string | null;
+    ownerProjectId: string | null;
+  }): void;
+}
+
+export interface PluginProjectScopeSource {
+  resolveOwner(): ExperimentalPluginOwnerProject | null;
+  describeProject(projectId: string): ExperimentalPluginOwnerProject | null;
+}
 
 export type {
   BbPluginApi,
@@ -279,6 +299,7 @@ export interface PluginApiHandle {
     listeners: PluginSettingsListener[];
   };
   projectSettings: PluginProjectSettingsRecord;
+  projectScope: PluginProjectScopeRecord;
   databaseHandles: Database.Database[];
   threadEventHandlers: PluginThreadEventHandlers;
   /** Hook handlers recorded by `bb.experimental_hooks.on`. */
@@ -522,6 +543,12 @@ export function createPluginApi(options: {
   publishSignal: (channel: string, payload: unknown) => void;
   settingsChanged: () => void;
   projectSettingsChanged: (projectId: string) => void;
+  /**
+   * Backs `bb.experimental_projectScope`: the project that owns this plugin
+   * when its manifest scope is `"single"`, and a project lookup for the
+   * `onChange` payloads.
+   */
+  projectScope: PluginProjectScopeSource;
   reportNeedsConfiguration: (message: string) => void;
   isAgentToolNameTaken: (name: string) => string | undefined;
   isEnvironmentProviderIdTaken: (id: string) => string | undefined;
@@ -593,6 +620,7 @@ export function createPluginApi(options: {
     invalidateRpc: optionsInvalidate,
     settingsChanged,
     projectSettingsChanged,
+    projectScope: projectScopeSource,
     reportNeedsConfiguration,
     isAgentToolNameTaken,
     reportAgentToolProblem,
@@ -629,6 +657,30 @@ export function createPluginApi(options: {
   const projectSettingsRecord: PluginProjectSettingsRecord = {
     descriptors: {},
     listeners: [],
+  };
+  const projectScopeRecord: PluginProjectScopeRecord = {
+    listeners: [],
+    notifyOwnerChanged(change) {
+      if (invalidated) return;
+      const previous =
+        change.previousOwnerProjectId === null
+          ? null
+          : projectScopeSource.describeProject(change.previousOwnerProjectId);
+      const next =
+        change.ownerProjectId === null
+          ? null
+          : projectScopeSource.describeProject(change.ownerProjectId);
+      for (const listener of projectScopeRecord.listeners) {
+        try {
+          listener(next, previous);
+        } catch (error) {
+          emitLog(
+            "warn",
+            `project scope onChange listener failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+    },
   };
   const databaseHandles: Database.Database[] = [];
   const threadEventHandlers: PluginThreadEventHandlers = {
@@ -918,6 +970,17 @@ export function createPluginApi(options: {
           );
         },
       };
+    },
+  };
+
+  const experimental_projectScope: ExperimentalPluginProjectScope = {
+    async get() {
+      assertLive();
+      return projectScopeSource.resolveOwner();
+    },
+    onChange(listener) {
+      assertLive();
+      projectScopeRecord.listeners.push(listener);
     },
   };
 
@@ -1506,6 +1569,7 @@ export function createPluginApi(options: {
     log,
     settings,
     experimental_projectSettings,
+    experimental_projectScope,
     storage,
     http,
     rpc,
@@ -1563,6 +1627,7 @@ export function createPluginApi(options: {
     installHandlers,
     settings: settingsRecord,
     projectSettings: projectSettingsRecord,
+    projectScope: projectScopeRecord,
     databaseHandles,
     threadEventHandlers,
     hooks,

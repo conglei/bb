@@ -97,8 +97,16 @@ Plugins:
   choice uses the plugin's default (`bb.experimental_projectDefault`, "on"
   unless the plugin says "off").
 
-  bb project plugins list <projectId>     Running plugins and their state here
+  A plugin whose manifest sets `bb.experimental_projectScope: "single"` is
+  project-bound: it is on in at most one project, its owner, and off
+  everywhere else. `list` shows the scope and the owner; `enable` on another
+  project moves the plugin there (the previous owner is turned off, and the
+  output names it); `disable` or `reset` on the owner leaves it off
+  everywhere.
+
+  bb project plugins list <projectId>     Running plugins, state, scope and owner here
   bb project plugins enable <projectId> <pluginId>
+                                          Turn on here (moves a project-bound plugin)
   bb project plugins disable <projectId> <pluginId>
   bb project plugins reset <projectId> <pluginId>
                                           Clear the project's choice (use the default)

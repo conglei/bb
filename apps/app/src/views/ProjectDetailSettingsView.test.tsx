@@ -402,6 +402,9 @@ describe("ProjectDetailSettingsView", () => {
         enabled: true,
         source: "default",
         hasProjectSettings: false,
+        scope: "any",
+        ownerProjectId: null,
+        ownerProjectName: null,
       },
       {
         pluginId: "kept",
@@ -410,6 +413,9 @@ describe("ProjectDetailSettingsView", () => {
         enabled: false,
         source: "default",
         hasProjectSettings: false,
+        scope: "any",
+        ownerProjectId: null,
+        ownerProjectName: null,
       },
     ];
     const overridden: ProjectPluginEntry[] = [

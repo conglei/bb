@@ -8,6 +8,7 @@ import {
   isPluginOwnedIconPath,
   pluginPackageJsonSchema,
   type PluginProjectDefault,
+  type PluginProjectScope,
   type UiCodeThemeDeclaration,
 } from "@bb/domain";
 import { resolvePluginCodeThemePath } from "../system/code-themes.js";
@@ -39,6 +40,7 @@ export interface PluginManifest {
   bbPluginSdkRange: string | undefined;
   providerCatalog: Array<{ id: string; displayName: string }>;
   projectDefault: PluginProjectDefault;
+  projectScope: PluginProjectScope;
   serverEntry: string;
   appEntry: string | undefined;
   hostEntry: string | undefined;
@@ -237,7 +239,11 @@ export async function readPluginManifest(
     providerCatalog: (bb.experimental_providers ?? []).map(
       ({ id, displayName }) => ({ id, displayName }),
     ),
-    projectDefault: bb.experimental_projectDefault ?? "on",
+    projectScope: bb.experimental_projectScope ?? "any",
+    projectDefault:
+      bb.experimental_projectScope === "single"
+        ? "off"
+        : (bb.experimental_projectDefault ?? "on"),
     serverEntry,
     appEntry: bb.app
       ? resolveManifestPath(rootDir, bb.app, "bb.app")

@@ -227,6 +227,19 @@ export const projectPluginEntrySchema = z.object({
    * servers omit it.
    */
   hasProjectSettings: z.boolean().default(false),
+  /**
+   * The manifest's `bb.experimental_projectScope`. A `"single"` plugin is on
+   * in at most one project, its owner; enabling it elsewhere moves it. Older
+   * servers omit it.
+   */
+  scope: z.enum(["any", "single"]).default("any"),
+  /**
+   * For a `"single"` plugin, the project that currently owns it (`null` when
+   * it is off everywhere). Always `null` for an `"any"` plugin.
+   */
+  ownerProjectId: z.string().nullable().default(null),
+  /** The owner's display name, when `ownerProjectId` is set. */
+  ownerProjectName: z.string().nullable().default(null),
 });
 export type ProjectPluginEntry = z.infer<typeof projectPluginEntrySchema>;
 

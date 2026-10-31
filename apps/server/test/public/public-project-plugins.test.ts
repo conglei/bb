@@ -19,6 +19,7 @@ afterEach(async () => {
 async function writePlugin(
   name: string,
   projectDefault: "on" | "off" | undefined,
+  projectScope?: "any" | "single",
 ): Promise<string> {
   const rootDir = join(pluginsDir, name);
   await mkdir(rootDir, { recursive: true });
@@ -35,6 +36,9 @@ async function writePlugin(
         ...(projectDefault === undefined
           ? {}
           : { experimental_projectDefault: projectDefault }),
+        ...(projectScope === undefined
+          ? {}
+          : { experimental_projectScope: projectScope }),
       },
     }),
   );
@@ -73,6 +77,9 @@ describe("project plugin routes", () => {
           enabled: false,
           source: "default",
           hasProjectSettings: false,
+          scope: "any",
+          ownerProjectId: null,
+          ownerProjectName: null,
         },
         {
           pluginId: "notes",
@@ -81,6 +88,9 @@ describe("project plugin routes", () => {
           enabled: true,
           source: "default",
           hasProjectSettings: false,
+          scope: "any",
+          ownerProjectId: null,
+          ownerProjectName: null,
         },
       ]);
 
@@ -140,6 +150,80 @@ describe("project plugin routes", () => {
         "/api/v1/projects/proj_missing/plugins",
       );
       expect(missingProject.status).toBe(404);
+    });
+  });
+
+  it("moves a single-scope plugin between projects and reports the owner to both", async () => {
+    await withTestHarness(async (harness) => {
+      await harness.pluginService.installPath(
+        await writePlugin("bb-plugin-master", undefined, "single"),
+      );
+      const { host } = seedHostSession(harness.deps, {
+        id: "host-single-scope",
+      });
+      const { project: projectA } = seedProjectWithSource(harness.deps, {
+        hostId: host.id,
+        name: "Alpha",
+      });
+      const { project: projectB } = seedProjectWithSource(harness.deps, {
+        hostId: host.id,
+        name: "Beta",
+      });
+      const put = (projectId: string, enabled: boolean | null) =>
+        harness.app.request(`/api/v1/projects/${projectId}/plugins/master`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        });
+      const list = async (projectId: string) =>
+        readJson(
+          await harness.app.request(`/api/v1/projects/${projectId}/plugins`),
+        );
+
+      expect(await list(projectA.id)).toEqual([
+        expect.objectContaining({
+          pluginId: "master",
+          enabled: false,
+          source: "default",
+          scope: "single",
+          ownerProjectId: null,
+          ownerProjectName: null,
+        }),
+      ]);
+
+      const onA = await put(projectA.id, true);
+      expect(onA.status).toBe(200);
+      expect(await readJson(onA)).toEqual([
+        expect.objectContaining({
+          enabled: true,
+          source: "project",
+          ownerProjectId: projectA.id,
+          ownerProjectName: "Alpha",
+        }),
+      ]);
+
+      const movedToB = await put(projectB.id, true);
+      expect(await readJson(movedToB)).toEqual([
+        expect.objectContaining({
+          enabled: true,
+          source: "project",
+          ownerProjectId: projectB.id,
+          ownerProjectName: "Beta",
+        }),
+      ]);
+      expect(await list(projectA.id)).toEqual([
+        expect.objectContaining({
+          enabled: false,
+          source: "default",
+          ownerProjectId: projectB.id,
+          ownerProjectName: "Beta",
+        }),
+      ]);
+
+      await put(projectB.id, false);
+      expect(await list(projectA.id)).toEqual([
+        expect.objectContaining({ enabled: false, ownerProjectId: null }),
+      ]);
     });
   });
 });

@@ -111,6 +111,8 @@ import type {
   PluginSettingDescriptors,
   PluginSettingValue,
   PluginSettings,
+  ExperimentalPluginOwnerProject,
+  ExperimentalPluginProjectScope,
   ExperimentalPluginProjectSettings,
   PluginSettingsValues,
   PluginStatusApi,
@@ -416,6 +418,18 @@ export interface FakePluginBehaviorDrivers {
     values: Record<string, PluginSettingValue | null>,
   ): Promise<void>;
   /**
+   * Set the project that owns this plugin, the way turning a
+   * `bb.experimental_projectScope: "single"` plugin on in a project does:
+   * `bb.experimental_projectScope.get()` returns it afterwards, and its
+   * `onChange(next, previous)` listeners fire when the owner changed.
+   * `null` turns the plugin off everywhere. The real host derives the owner
+   * from the project's Plugins section, `bb project plugins enable` or the
+   * SDK; the fake accepts any project here.
+   */
+  experimental_setOwnerProject(
+    project: ExperimentalPluginOwnerProject | null,
+  ): void;
+  /**
    * Invoke a registered rpc method with host semantics: input/output schemas,
    * strict JSON result normalization, and structured failure codes. Rejects
    * with the same message/code/issues the frontend client surfaces. The
@@ -595,6 +609,12 @@ export interface CreateFakePluginHostOptions {
     string,
     Record<string, PluginSettingValue>
   >;
+  /**
+   * The project that owns this plugin before the load, as if a
+   * `bb.experimental_projectScope: "single"` plugin had been turned on there.
+   * Defaults to `null` (off everywhere, or an `"any"` plugin).
+   */
+  experimental_ownerProject?: ExperimentalPluginOwnerProject | null;
   /** Initial `bb.sdk` stubs; extend later via `harness.sdk.stub`. */
   sdk?: FakeSdkOverrides;
   /** Static manifest skill ids available to configure() in this fake host. */
@@ -698,6 +718,7 @@ interface FakePluginPersistentState {
   storageRoot: string;
   storedSettings: Map<string, PluginSettingValue>;
   storedProjectSettings: Map<string, Map<string, PluginSettingValue>>;
+  ownerProject: { current: ExperimentalPluginOwnerProject | null };
 }
 
 const FAKE_TUNNEL_INGRESS_FIRST_PORT = 41_000;
@@ -731,6 +752,9 @@ function createFakePluginHostInternal(
           ([projectId, values]) => [projectId, new Map(Object.entries(values))],
         ),
       ),
+      ownerProject: {
+        current: structuredClone(options.experimental_ownerProject ?? null),
+      },
     } satisfies FakePluginPersistentState);
   const pluginId = options.pluginId ?? "test-plugin";
   const declaredIconNames = new Set(
@@ -1013,6 +1037,43 @@ function createFakePluginHostInternal(
           );
         },
       };
+    },
+  };
+
+  // --- project scope ---
+  const ownerProject = persistentState.ownerProject;
+  const projectScopeListeners: Array<
+    (
+      next: ExperimentalPluginOwnerProject | null,
+      previous: ExperimentalPluginOwnerProject | null,
+    ) => void
+  > = [];
+  function setOwnerProject(
+    project: ExperimentalPluginOwnerProject | null,
+  ): void {
+    const previous = ownerProject.current;
+    const next = structuredClone(project);
+    ownerProject.current = next;
+    if (JSON.stringify(previous) === JSON.stringify(next)) return;
+    for (const listener of projectScopeListeners) {
+      try {
+        listener(structuredClone(next), structuredClone(previous));
+      } catch (error) {
+        emitLog(
+          "warn",
+          `project scope onChange listener failed: ${errorMessage(error)}`,
+        );
+      }
+    }
+  }
+  const experimental_projectScope: ExperimentalPluginProjectScope = {
+    async get() {
+      assertLive();
+      return structuredClone(ownerProject.current);
+    },
+    onChange(listener) {
+      assertLive();
+      projectScopeListeners.push(listener);
     },
   };
 
@@ -1777,6 +1838,7 @@ function createFakePluginHostInternal(
     log,
     settings,
     experimental_projectSettings,
+    experimental_projectScope,
     storage,
     http,
     rpc,
@@ -2075,6 +2137,10 @@ function createFakePluginHostInternal(
 
     async experimental_setProjectSettings(projectId, values) {
       await setProjectSettingsValues(projectId, values);
+    },
+
+    experimental_setOwnerProject(project) {
+      setOwnerProject(project);
     },
 
     experimental_watchRpc(method, read) {

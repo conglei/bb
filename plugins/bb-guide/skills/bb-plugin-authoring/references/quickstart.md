@@ -54,6 +54,13 @@ the current engine values and the entries for its generated surfaces.
   tool calls from that project's threads are refused. Ship `"off"` for a
   plugin built around a project view that only some projects want.
   Experimental: see `docs/api_to_audit.md`.
+- `bb.experimental_projectScope` (optional, `"any"` | `"single"`, default
+  `"any"`) — `"single"` binds the plugin to one project: it is on in at most
+  one project (its owner) and off everywhere else, so `projectDefault` is
+  forced to `"off"` (declaring `"on"` with it is a manifest error). Turning
+  it on in another project moves it. The server reads the owner through
+  `bb.experimental_projectScope` (backend-foundation.md). Experimental: see
+  `docs/api_to_audit.md`.
 - `bb.themes` (optional) — contributes palettes to Settings → Appearance and
   `bb theme list`. Each entry is
   `{ id, name, description?, css: "./themes/name.css", codeTheme? }`;

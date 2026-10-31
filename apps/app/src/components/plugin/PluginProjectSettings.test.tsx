@@ -154,6 +154,9 @@ describe("ProjectPluginsSection project settings", () => {
         enabled: true,
         source: "project",
         hasProjectSettings: true,
+        scope: "any",
+        ownerProjectId: null,
+        ownerProjectName: null,
       },
       {
         pluginId: "notes",
@@ -162,6 +165,9 @@ describe("ProjectPluginsSection project settings", () => {
         enabled: false,
         source: "default",
         hasProjectSettings: true,
+        scope: "any",
+        ownerProjectId: null,
+        ownerProjectName: null,
       },
       {
         pluginId: "git",
@@ -170,6 +176,9 @@ describe("ProjectPluginsSection project settings", () => {
         enabled: true,
         source: "default",
         hasProjectSettings: false,
+        scope: "any",
+        ownerProjectId: null,
+        ownerProjectName: null,
       },
     ];
     vi.mocked(sdk.projects.plugins.list).mockResolvedValue(entries);

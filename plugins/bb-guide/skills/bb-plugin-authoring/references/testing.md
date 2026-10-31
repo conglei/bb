@@ -36,6 +36,7 @@ const { bb, harness } = createFakePluginHost({
   pluginId: "my-plugin",
   settings: { apiToken: "tok" }, // pre-seeded stored values (secrets included)
   experimental_projectSettings: { proj_1: { goal: "ship" } }, // pre-seeded per-project values
+  experimental_ownerProject: null, // owning project of a "single"-scope plugin before load
   sdk: { threads: { spawn: async () => ({ id: "th_1" }) } },
   experimental_callHostRpc: async ({ method, input, hostId, signal }) => {
     return { ok: true }; // validated against the method's output schema
@@ -60,6 +61,11 @@ await harness.behavior.setSettings({ apiToken: "next" }); // validates + fires o
 await harness.behavior.experimental_setProjectSettings("proj_1", {
   goal: "ship",
 }); // per-project rows; onChange(projectId, next, prev)
+harness.behavior.experimental_setOwnerProject({
+  projectId: "proj_1",
+  name: "Alpha",
+  localPaths: ["/srv/alpha"],
+}); // bb.experimental_projectScope.get() + onChange(next, previous); null = off everywhere
 await harness.behavior.resolveAgentConfiguration(
   makePluginAgentConfigurationContext(),
 );

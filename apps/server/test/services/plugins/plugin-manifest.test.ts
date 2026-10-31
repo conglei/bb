@@ -118,6 +118,43 @@ describe("plugin manifest", () => {
     );
   });
 
+  it("reads bb.experimental_projectScope, defaults it to any, and forces single-scope plugins off by default", async () => {
+    await writeManifest();
+    expect((await readPluginManifest(rootDir)).projectScope).toBe("any");
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectScope: "single",
+    });
+    const single = await readPluginManifest(rootDir);
+    expect(single.projectScope).toBe("single");
+    expect(single.projectDefault).toBe("off");
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectScope: "single",
+      experimental_projectDefault: "off",
+    });
+    expect((await readPluginManifest(rootDir)).projectDefault).toBe("off");
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectScope: "single",
+      experimental_projectDefault: "on",
+    });
+    await expect(readPluginManifest(rootDir)).rejects.toThrow(
+      /experimental_projectDefault.*binds the plugin to one project/s,
+    );
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectScope: "every",
+    });
+    await expect(readPluginManifest(rootDir)).rejects.toThrow(
+      /experimental_projectScope/,
+    );
+  });
+
   it("requires branding with an icon or light logo", async () => {
     for (const branding of [undefined, null, {}, { icon: "   " }]) {
       await writeManifest(undefined, { ...validBb, branding });

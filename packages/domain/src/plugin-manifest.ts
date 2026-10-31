@@ -79,6 +79,9 @@ const pluginBrandingSchema = z
 export const pluginProjectDefaultSchema = z.enum(["on", "off"]);
 export type PluginProjectDefault = z.infer<typeof pluginProjectDefaultSchema>;
 
+export const pluginProjectScopeSchema = z.enum(["any", "single"]);
+export type PluginProjectScope = z.infer<typeof pluginProjectScopeSchema>;
+
 const pluginBbManifestSchema = z
   .object({
     name: requiredManifestString,
@@ -96,6 +99,7 @@ const pluginBbManifestSchema = z
       )
       .optional(),
     experimental_projectDefault: pluginProjectDefaultSchema.optional(),
+    experimental_projectScope: pluginProjectScopeSchema.optional(),
     server: requiredManifestString,
     app: requiredManifestString.optional(),
     host: requiredManifestString.optional(),
@@ -117,7 +121,20 @@ const pluginBbManifestSchema = z
       )
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((bb, context) => {
+    if (
+      bb.experimental_projectScope === "single" &&
+      bb.experimental_projectDefault === "on"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["experimental_projectDefault"],
+        message:
+          'experimental_projectScope "single" binds the plugin to one project, so it is off in every other project; drop experimental_projectDefault or set it to "off"',
+      });
+    }
+  });
 
 export const pluginPackageJsonSchema = z
   .object({

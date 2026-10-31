@@ -137,6 +137,7 @@ export function makeInstalledPlugin(
     hasSettings: false,
     hasProjectSettings: false,
     projectDefault: "on",
+    projectScope: "any",
     app: { hasApp: false, bundle: null },
     logoUrl: null,
     logoDarkUrl: null,
