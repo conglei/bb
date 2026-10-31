@@ -24,7 +24,9 @@ import { getThreadDisplayTitle } from "@/lib/thread-title";
 
 export const CORE_THREADS_PROJECT_VIEW_ID = "threads";
 
-export function ProjectThreadsView({ projectId }: ExperimentalProjectViewProps) {
+export function ProjectThreadsView({
+  projectId,
+}: ExperimentalProjectViewProps) {
   const navigate = useNavigate();
   const setRootComposeProjectId = useSetRootComposeProjectId();
   const [, setPlacement] = useRootComposePlacement();
@@ -51,13 +53,15 @@ export function ProjectThreadsView({ projectId }: ExperimentalProjectViewProps) 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {sidebarNavigationQuery.data === undefined
-            ? "Loading threads"
-            : threads.length === 0
-              ? "No threads yet"
-              : `${threads.length} ${threads.length === 1 ? "thread" : "threads"}`}
-        </p>
+        <h2 className="min-w-0 truncate text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Threads</span>
+          {sidebarNavigationQuery.data === undefined ? null : (
+            <>
+              {" · "}
+              <span data-testid="project-threads-count">{threads.length}</span>
+            </>
+          )}
+        </h2>
         <Button type="button" size="sm" onClick={startThread}>
           <Icon name="Plus" className="size-3.5" />
           New thread

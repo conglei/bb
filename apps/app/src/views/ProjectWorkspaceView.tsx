@@ -7,7 +7,6 @@ import { PluginItemIcon } from "@/components/plugin/PluginIcon";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
 import { PageShell } from "@/components/ui/page-shell";
 import { useProjectPlugins } from "@/hooks/queries/project-plugins-query";
-import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { usePluginFrontendsSettled } from "@/lib/plugin-frontend-boot-state";
 import {
   usePluginSlots,
@@ -119,11 +118,7 @@ export function ProjectWorkspaceView({
   const { projectViews: registeredViews } = usePluginSlots();
   const pluginsSettled = usePluginFrontendsSettled();
   const isCompactViewport = useIsCompactViewport();
-  const sidebarNavigationQuery = useSidebarNavigation();
   const projectPluginsQuery = useProjectPlugins({ projectId });
-  const project = sidebarNavigationQuery.data?.projects.find(
-    (candidate) => candidate.id === projectId,
-  );
   const { views: projectViews, settled: projectPluginsSettled } =
     selectProjectViews(registeredViews, projectPluginsQuery);
   const view =
@@ -133,19 +128,6 @@ export function ProjectWorkspaceView({
   return (
     <PageShell contentClassName="pt-4 md:pt-5">
       <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <Icon
-            name="FolderGit"
-            className="size-4 shrink-0 text-muted-foreground"
-          />
-          <h1
-            className="min-w-0 truncate text-sm font-semibold text-foreground"
-            data-testid="project-workspace-title"
-          >
-            {project?.name ??
-              (sidebarNavigationQuery.data === undefined ? "" : "Project")}
-          </h1>
-        </div>
         <ProjectViewTabs
           projectId={projectId}
           views={projectViews}

@@ -14,6 +14,8 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import { Pill } from "@bb/shared-ui/pill";
 import { ResourceOverflowMenu } from "@bb/shared-ui/resource-list";
 import { ProjectPathDialog } from "@/components/dialogs/ProjectPathDialog";
+import { ProjectIcon } from "@/components/project/ProjectIcon";
+import { ProjectIconPicker } from "@/components/project/ProjectIconPicker";
 import {
   ProjectDeleteDialog,
   type ProjectDeleteDialogTarget,
@@ -351,10 +353,16 @@ export function ProjectDetailSettingsView() {
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
-                <Icon
-                  name="FolderGit"
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
+                {project.kind === "standard" ? (
+                  <ProjectIconPicker projectId={project.id} icon={project.icon}>
+                    <ProjectIcon icon={project.icon} />
+                  </ProjectIconPicker>
+                ) : (
+                  <ProjectIcon
+                    icon={project.icon}
+                    className="text-muted-foreground"
+                  />
+                )}
                 <h1 className="min-w-0 truncate text-sm font-semibold text-foreground">
                   {project.name}
                 </h1>

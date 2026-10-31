@@ -334,6 +334,26 @@ vi.mock("@/views/RootComposeView", () => ({
   RootComposeView: RootComposeFixture,
 }));
 
+vi.mock("@/views/ProjectWorkspaceView", () => ({
+  ProjectWorkspaceView: ({ projectId }: { projectId: string }) => (
+    <div data-testid="project-workspace-view">{projectId}</div>
+  ),
+}));
+
+vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
+  useSidebarNavigation: () => ({
+    data: {
+      sections: [],
+      personalProject: {
+        id: PERSONAL_PROJECT_ID,
+        name: "Personal",
+        icon: null,
+      },
+      projects: [{ id: "proj_kept", name: "Kept", icon: "Beaker" }],
+    },
+  }),
+}));
+
 vi.mock("@/components/plugin/PluginPanelRightPanelHost", () => ({
   PluginPanelRightPanelHost: ({
     children,
@@ -1807,6 +1827,37 @@ describe("SplitThreadArea", () => {
         .querySelector("button")
         ?.getAttribute("aria-expanded"),
     ).toBe("false");
+  });
+
+  it("labels a project-view pane with the project's icon and name", async () => {
+    const projectViewContent: PaneContent = {
+      kind: "project-view",
+      projectId: "proj_kept",
+      viewKey: "core.threads",
+    };
+    renderSplitArea({
+      path: "/projects/proj_kept/views/core.threads",
+      layout: {
+        root: {
+          type: "split",
+          dir: "row",
+          sizes: [0.5, 0.5],
+          children: [
+            { type: "pane", paneId: "pane-1", content: threadContent("thr-a") },
+            { type: "pane", paneId: "pane-2", content: projectViewContent },
+          ],
+        },
+        focusedPaneId: "pane-2",
+      },
+      routeContent: projectViewContent,
+    });
+
+    const title = await screen.findByTestId("project-view-pane-title");
+    expect(title.textContent).toBe("Kept");
+    expect(title.querySelector('[data-icon="Beaker"]')).not.toBeNull();
+    expect(screen.getByTestId("project-workspace-view").textContent).toBe(
+      "proj_kept",
+    );
   });
 
   it("keeps the panel available for a focused new-thread pane", async () => {

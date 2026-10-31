@@ -82,6 +82,8 @@ import { LazyThreadDetailView as ThreadDetailView } from "./LazyThreadDetailView
 import { LazyRootComposeView as RootComposeView } from "@/views/LazyRootComposeView";
 import { PluginPanelView } from "@/views/PluginPanelView";
 import { ProjectWorkspaceView } from "@/views/ProjectWorkspaceView";
+import { ProjectIcon } from "@/components/project/ProjectIcon";
+import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import {
   AppPageHeader,
   HEADER_ICON_BUTTON_CLASS,
@@ -1295,12 +1297,19 @@ function NonThreadPaneContent({
       : undefined;
   const panel = panelEntry?.panel ?? undefined;
   const panelChrome = panelEntry?.chrome;
+  const sidebarNavigationQuery = useSidebarNavigation();
+  const paneProject =
+    content.kind === "project-view"
+      ? (sidebarNavigationQuery.data?.projects.find(
+          (candidate) => candidate.id === content.projectId,
+        ) ?? null)
+      : null;
   const label =
     panelChrome?.title ??
     (content.kind === "plugin-detail"
       ? "Extension"
       : content.kind === "project-view"
-        ? "Project"
+        ? (paneProject?.name ?? "Project")
         : "New thread");
   const handlePointerDown = (event: ReactPointerEvent) => {
     if (
@@ -1389,6 +1398,23 @@ function NonThreadPaneContent({
             >
               {panelChrome ? (
                 <PluginPanelHeaderCenter chrome={panelChrome} />
+              ) : content.kind === "project-view" ? (
+                <div
+                  data-testid="project-view-pane-title"
+                  className={cn(
+                    "relative flex min-w-0 items-center gap-2 transition-colors",
+                    isBoundedPane &&
+                      !isFocused &&
+                      dimsInactiveSplits &&
+                      CONTEXT_INACTIVE_TEXT_CLASS,
+                  )}
+                >
+                  <ProjectIcon
+                    icon={paneProject?.icon}
+                    className="text-muted-foreground"
+                  />
+                  <p className="truncate text-sm font-semibold">{label}</p>
+                </div>
               ) : (
                 <p
                   className={cn(
@@ -1401,9 +1427,7 @@ function NonThreadPaneContent({
                 >
                   {content.kind === "plugin-detail"
                     ? "Extension"
-                    : content.kind === "project-view"
-                      ? "Project"
-                      : "New thread"}
+                    : "New thread"}
                 </p>
               )}
             </div>

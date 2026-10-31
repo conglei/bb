@@ -6,6 +6,7 @@ import type { ProjectWithThreadsResponse } from "@bb/server-contract";
 import { Button } from "@bb/shared-ui/button";
 import "@bb/shared-ui/icon-extended";
 import { Icon } from "@bb/shared-ui/icon";
+import { ProjectIcon } from "@/components/project/ProjectIcon";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
   ResourceOverflowMenu,
@@ -169,9 +170,9 @@ function SortableProjectRow({
         >
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex min-w-0 items-center gap-1.5">
-              <Icon
-                name="FolderGit"
-                className="size-4 shrink-0 text-muted-foreground"
+              <ProjectIcon
+                icon={project.icon}
+                className="text-muted-foreground"
               />
               <span className="min-w-0 truncate text-sm font-medium text-foreground">
                 {project.name}

@@ -2258,6 +2258,11 @@ function ProjectRowComponent({
         >
           <TopLevelSidebarSection
             label={project.name}
+            labelIcon={
+              project.icon === null ? undefined : (
+                <Icon name={project.icon} fallback="FolderGit" />
+              )
+            }
             dropParentKey={buildSidebarEntitySectionId("project", project.id)}
             labelEditor={rename.editor}
             onLabelClick={openProject}

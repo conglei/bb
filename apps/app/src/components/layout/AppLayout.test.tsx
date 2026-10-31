@@ -7,6 +7,7 @@ import {
   render as renderReact,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
 import { defaultAppSettings } from "@bb/domain";
@@ -126,7 +127,18 @@ vi.mock("@/components/dialogs/ProjectPathDialog", () => ({
 
 vi.mock("./AppPageHeader", () => ({
   HEADER_ICON_BUTTON_CLASS: "header-icon-button",
-  AppPageHeader: () => <header />,
+  AppPageHeader: ({
+    center,
+    actions,
+  }: {
+    center?: ReactNode;
+    actions?: ReactNode;
+  }) => (
+    <header>
+      {center}
+      {actions}
+    </header>
+  ),
 }));
 
 vi.mock("@/lib/bb-desktop", () => ({
@@ -179,7 +191,20 @@ vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
         createdAt: 1,
         updatedAt: 1,
       },
-      projects: [],
+      projects: [
+        {
+          id: "proj_one",
+          kind: "standard",
+          name: "Kept",
+          icon: "Beaker",
+          gitRemoteUrl: null,
+          sources: [],
+          threads: [],
+          defaultExecutionOptions: null,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
     },
     isError: false,
     isSuccess: true,
@@ -429,6 +454,22 @@ describe("AppLayout Back to app", () => {
     });
 
     expect(screen.getByTestId("location").textContent).toBe(SETTINGS_ROUTE);
+  });
+});
+
+describe("AppLayout project page chrome", () => {
+  it("shows the project's icon and name in the chrome row with the icon picker", () => {
+    renderLayout("/projects/proj_one/views/core.threads");
+
+    const header = screen.getByTestId("app-layout-content-shell");
+    const trigger = within(header).getByRole("button", {
+      name: "Change project icon",
+    });
+    expect(trigger.querySelector('[data-icon="Beaker"]')).not.toBeNull();
+    expect(within(header).getByText("Kept")).toBeTruthy();
+    expect(
+      within(header).getByRole("link", { name: "Project settings" }),
+    ).toBeTruthy();
   });
 });
 

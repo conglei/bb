@@ -515,6 +515,40 @@ describe("ProjectRow interactions", () => {
     });
   });
 
+  it("draws the project's icon before its name and none by default", () => {
+    const { container, unmount } = renderProjectRow();
+    expect(
+      container.querySelector("[data-sidebar-section-label-icon]"),
+    ).toBeNull();
+    unmount();
+
+    const store = createStore();
+    store.set(sidebarOrganizationModeAtom, "project");
+    const iconed = renderTree(
+      <ProjectRow
+        project={makeSidebarProject({ icon: "Beaker" })}
+        threadListState={{ status: "ready", threads: [] }}
+        isActive={false}
+        isCollapsed={false}
+        compareThreads={() => 0}
+        collapsedThreadIds={new Set()}
+        collapsedEnvironmentIds={new Set()}
+        onToggleProjectCollapsed={vi.fn()}
+        onToggleThreadCollapsed={vi.fn()}
+        onToggleEnvironmentCollapsed={vi.fn()}
+      />,
+      { store },
+    );
+    const slot = iconed.container.querySelector(
+      "[data-sidebar-section-label-icon]",
+    );
+    expect(slot?.querySelector('[data-icon="Beaker"]')).not.toBeNull();
+    const label = screen.getByTitle("Test project");
+    expect(
+      slot!.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("links project settings and confirms removal through the SDK", async () => {
     const remove = vi.fn(sdkResult({ ok: true }));
     const { sdkCalls } = renderProjectRow(

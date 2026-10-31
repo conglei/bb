@@ -99,12 +99,16 @@ afterEach(() => {
 });
 
 describe("ProjectWorkspaceView", () => {
-  it("shows the project name, the core Threads view first, and the project's threads", () => {
+  it("puts the view tabs first, then the Threads section with its count", () => {
     renderAt("/projects/proj_kept/views/core.threads");
 
-    expect(screen.getByTestId("project-workspace-title").textContent).toBe(
-      "Kept",
-    );
+    expect(screen.queryByTestId("project-workspace-title")).toBeNull();
+    expect(screen.getByTestId("project-threads-count").textContent).toBe("2");
+    expect(
+      screen
+        .getByRole("heading", { level: 2 })
+        .textContent?.replace(/\s+/g, " "),
+    ).toBe("Threads · 2");
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent)).toEqual(["Threads"]);
     expect(tabs[0]?.getAttribute("aria-selected")).toBe("true");

@@ -62,6 +62,8 @@ import {
 } from "@/components/ui/secondary-panel-shelf-visibility";
 import { ProjectPathDialog } from "@/components/dialogs/ProjectPathDialog";
 import { ProjectActionsMenu } from "@/components/project/ProjectActionsMenu";
+import { ProjectIcon } from "@/components/project/ProjectIcon";
+import { ProjectIconPicker } from "@/components/project/ProjectIconPicker";
 import { ProjectActionsProvider } from "@/components/project/ProjectActionsProvider";
 import {
   PluginPanelHeaderActions,
@@ -353,6 +355,7 @@ function resolveRouteTitle(pathname: string): { title: string } | undefined {
 interface AppHeaderProps {
   resourceSection: ToolsSectionId | null;
   usesProjectChromeStyle: boolean;
+  isProjectViewRoute: boolean;
   usesDesktopChrome: boolean;
   projectId?: string;
   project?: ProjectResponse;
@@ -368,6 +371,7 @@ interface AppHeaderProps {
 function AppHeader({
   resourceSection,
   usesProjectChromeStyle,
+  isProjectViewRoute,
   usesDesktopChrome,
   projectId,
   project,
@@ -387,33 +391,51 @@ function AppHeader({
 
   const hasCenterContent = Boolean(headerBreadcrumbs) || Boolean(headerTitle);
 
-  const center = resourceSection ? (
-    <PageTitleHeader
-      icon={
-        <Icon
-          name={resourceSection === "plugins" ? "Plug02" : "Zap"}
-          className="size-4 shrink-0 text-muted-foreground"
-        />
-      }
-      title={resourceSection === "plugins" ? "Plugins" : "Skills"}
-      value={pageTitle}
-    />
-  ) : headerBreadcrumbs ? (
-    <div className="min-w-0 flex-1">
-      <AppBreadcrumbs
-        breadcrumbs={headerBreadcrumbs}
-        usesDesktopChrome={usesDesktopChrome}
+  const center =
+    isProjectViewRoute && project ? (
+      <PageTitleHeader
+        icon={
+          project.kind === "standard" ? (
+            <ProjectIconPicker projectId={project.id} icon={project.icon}>
+              <ProjectIcon icon={project.icon} />
+            </ProjectIconPicker>
+          ) : (
+            <ProjectIcon
+              icon={project.icon}
+              className="text-muted-foreground"
+            />
+          )
+        }
+        title={project.name}
+        value={null}
       />
-    </div>
-  ) : pluginPanelChrome ? (
-    <PluginPanelHeaderCenter chrome={pluginPanelChrome} />
-  ) : hasCenterContent ? (
-    <div className="min-w-0 flex-1">
-      {headerTitle ? (
-        <p className="truncate text-sm font-semibold">{headerTitle}</p>
-      ) : null}
-    </div>
-  ) : null;
+    ) : resourceSection ? (
+      <PageTitleHeader
+        icon={
+          <Icon
+            name={resourceSection === "plugins" ? "Plug02" : "Zap"}
+            className="size-4 shrink-0 text-muted-foreground"
+          />
+        }
+        title={resourceSection === "plugins" ? "Plugins" : "Skills"}
+        value={pageTitle}
+      />
+    ) : headerBreadcrumbs ? (
+      <div className="min-w-0 flex-1">
+        <AppBreadcrumbs
+          breadcrumbs={headerBreadcrumbs}
+          usesDesktopChrome={usesDesktopChrome}
+        />
+      </div>
+    ) : pluginPanelChrome ? (
+      <PluginPanelHeaderCenter chrome={pluginPanelChrome} />
+    ) : hasCenterContent ? (
+      <div className="min-w-0 flex-1">
+        {headerTitle ? (
+          <p className="truncate text-sm font-semibold">{headerTitle}</p>
+        ) : null}
+      </div>
+    ) : null;
 
   const actions = pluginPanel ? (
     <PluginPanelHeaderActions
@@ -864,6 +886,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                         usesProjectChromeStyle={
                           isRootView || isArchivedView || isProjectViewRoute
                         }
+                        isProjectViewRoute={isProjectViewRoute}
                         projectId={projectId}
                         project={project}
                         pluginPanel={pluginPanel}
