@@ -102,6 +102,7 @@ import {
   getThreadRoutePath,
   isProjectlessProjectId,
   SETTINGS_ROUTE_PATH,
+  PROJECT_VIEW_ROUTE_PATH,
 } from "@/lib/route-paths";
 import { useQuickCreateProjectController } from "@/hooks/useQuickCreateProject";
 import { IframeDragGuardOverlay } from "@/lib/iframe-drag-guard";
@@ -603,6 +604,8 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   const liveWidthRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
   const showHeader = !isThreadView && !isRootView && pluginPanelRoute === null;
+  const isProjectViewRoute =
+    matchPath(PROJECT_VIEW_ROUTE_PATH, location.pathname) !== null;
   const [desktopInfo] = useState(getBbDesktopInfo);
   const desktopWindowState = useDesktopWindowState();
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
@@ -858,7 +861,9 @@ function AppLayoutContent({ children }: AppLayoutProps) {
                             : null
                         }
                         usesDesktopChrome={usesDesktopChrome}
-                        usesProjectChromeStyle={isRootView || isArchivedView}
+                        usesProjectChromeStyle={
+                          isRootView || isArchivedView || isProjectViewRoute
+                        }
                         projectId={projectId}
                         project={project}
                         pluginPanel={pluginPanel}

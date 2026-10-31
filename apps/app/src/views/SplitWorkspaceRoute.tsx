@@ -40,7 +40,11 @@ export default function SplitWorkspaceRoute() {
       return { kind: "thread", projectId, threadId };
     }
     const content = paneContentForPathname(location.pathname);
-    if (content?.kind === "plugin-detail" || content?.kind === "plugin-panel") {
+    if (
+      content?.kind === "plugin-detail" ||
+      content?.kind === "plugin-panel" ||
+      content?.kind === "project-view"
+    ) {
       return content;
     }
     return null;

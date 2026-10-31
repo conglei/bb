@@ -61,6 +61,7 @@ export interface TopLevelSidebarSectionProps {
   label: string;
   labelEditor?: ReactNode;
   onRename?: () => void;
+  onLabelClick?: () => void;
   children: ReactNode;
   dropParentKey?: string;
   sectionId?: string;
@@ -84,6 +85,7 @@ export function TopLevelSidebarSection({
   label,
   labelEditor,
   onRename,
+  onLabelClick,
   children,
   dropParentKey,
   sectionId,
@@ -206,23 +208,48 @@ export function TopLevelSidebarSection({
         {...(dragBindings?.listeners ?? {})}
       >
         <span className="relative z-10 flex min-w-0 flex-1 items-center gap-1 text-left">
-          {labelEditor ?? (
-            <span
-              className="min-w-0 truncate"
-              title={label}
-              onDoubleClick={
-                onRename
-                  ? (event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onRename();
-                    }
-                  : undefined
-              }
-            >
-              {label}
-            </span>
-          )}
+          {labelEditor ??
+            (onLabelClick ? (
+              <button
+                type="button"
+                data-sidebar-section-label-link=""
+                className="min-w-0 cursor-pointer truncate rounded-sm text-left hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring"
+                title={label}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onLabelClick();
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                onDoubleClick={
+                  onRename
+                    ? (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onRename();
+                      }
+                    : undefined
+                }
+              >
+                {label}
+              </button>
+            ) : (
+              <span
+                className="min-w-0 truncate"
+                title={label}
+                onDoubleClick={
+                  onRename
+                    ? (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onRename();
+                      }
+                    : undefined
+                }
+              >
+                {label}
+              </span>
+            ))}
           {collapseControl ? (
             <button
               type="button"

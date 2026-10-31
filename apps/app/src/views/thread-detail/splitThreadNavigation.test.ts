@@ -12,6 +12,7 @@ import {
   applyThreadPaneActionToLayout,
   createSinglePaneLayout,
   focusedPaneRoute,
+  paneContentForPathname,
   reconcileLayoutForContent,
 } from "./splitThreadNavigation";
 
@@ -77,6 +78,33 @@ describe("mixed page navigation", () => {
       subPath: "work/today.md",
     });
     expect(focusedPaneRoute(after)).toBe("/plugins/notes/notes/work/today.md");
+  });
+
+  it("switches a project pane's view in place without opening a second pane", () => {
+    const threadsView = {
+      kind: "project-view",
+      projectId: "proj_kept",
+      viewKey: "core.threads",
+    } as const;
+    const before = splitPane(twoPaneLayout(), "pane-1", "bottom", threadsView);
+
+    const after = reconcileLayoutForContent(before, {
+      ...threadsView,
+      viewKey: "kept.today",
+    });
+
+    expect(listPanes(after.root)).toHaveLength(3);
+    expect(findPaneByContent(after.root, threadsView)?.content).toEqual({
+      ...threadsView,
+      viewKey: "kept.today",
+    });
+    expect(focusedPaneRoute(after)).toBe(
+      "/projects/proj_kept/views/kept.today",
+    );
+    expect(paneContentForPathname("/projects/proj_kept/views/kept.today")).toEqual({
+      ...threadsView,
+      viewKey: "kept.today",
+    });
   });
 });
 

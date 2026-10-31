@@ -2164,6 +2164,11 @@ function ProjectRowComponent({
   projectRowStyle,
 }: ProjectRowProps) {
   const sdk = useSdk();
+  const navigate = useBbNavigate();
+  const openProject = useCallback(() => {
+    onProjectSelect?.();
+    navigate.experimental_toProjectView(project.id);
+  }, [navigate, onProjectSelect, project.id]);
   const rename = useSidebarRename({
     kind: "project",
     id: project.id,
@@ -2223,6 +2228,7 @@ function ProjectRowComponent({
       <ProjectActionsMenuItems
         project={project}
         surface="dropdown"
+        onOpen={openProject}
         onRename={rename.startEditingFromMenu}
         onRemove={requestRemove}
         extraActions={(surface) => (
@@ -2240,6 +2246,7 @@ function ProjectRowComponent({
         )}
         project={project}
         disabled={rename.isEditing}
+        onOpen={openProject}
         onRename={rename.startEditingFromMenu}
         onRemove={requestRemove}
         onCloseAutoFocus={rename.onCloseAutoFocus}
@@ -2253,6 +2260,7 @@ function ProjectRowComponent({
             label={project.name}
             dropParentKey={buildSidebarEntitySectionId("project", project.id)}
             labelEditor={rename.editor}
+            onLabelClick={openProject}
             onRename={rename.startEditingFromDoubleClick}
             actions={projectActions}
             actionsMobileAlways

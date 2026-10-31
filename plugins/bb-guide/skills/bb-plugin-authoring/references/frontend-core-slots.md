@@ -84,6 +84,20 @@ Slot props contracts (versioned, additive-only):
   directly or use the vendored responsive overlay primitives. A crash hides
   only that overlay. Use a content script instead for DOM enhancement that does
   not need React context. Experimental: see `docs/api_to_audit.md`.
+- `experimental_projectView` → `{ projectId: string; isCompactViewport: boolean }`.
+  Adds a tab to every project's page, which opens from the project's name in
+  the sidebar, the project menus' "Open project", and `bb project open`. The
+  page lives at `/projects/<projectId>/views/<pluginId>.<id>`; bb owns the
+  title row and the tab strip, and bb's own "Threads" view comes first through
+  the same slot. Registration:
+  `{ id, title, icon, component, experimental_useBadge? }`. The component
+  fills the area below the tabs inside the page's scroll region; pad and
+  constrain its own content (`mx-auto w-full max-w-3xl`). `experimental_useBadge`
+  is a React hook, called with `{ projectId }`, that returns
+  `{ count?, text?, tone?, label }` or `null`. Navigate to a view with
+  `useBbNavigate().experimental_toProjectView(projectId, { viewKey })`,
+  where `viewKey` is `<pluginId>.<viewId>`. The personal project has no page.
+  Experimental: see `docs/api_to_audit.md`.
 - `navPanel` → `{ subPath: string }` — owns the whole route at
   `/plugins/<pluginId>/<path>/*` and gets its own navigation rail destination. `subPath`
   is the route remainder after the panel root (`""` at the root) as it appears

@@ -29,6 +29,8 @@ A project maps to a code repository. All threads belong to a project.
 
   bb project show <id>                    Show project details
     Accepts proj_personal to inspect Personal.
+  bb project open <id>                    Print the URL of the project's page
+    --view <pluginId.viewId>              Open a plugin's view (default: core.threads)
   bb project update <id>                  Update a project
     --name <name>                         New name
 

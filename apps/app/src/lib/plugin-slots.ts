@@ -1,3 +1,4 @@
+import { coreProjectViews } from "@/components/project/core-project-views";
 import { coreTabs } from "@/components/secondary-panel/thread-info-registration";
 import { coreMessageMetadata } from "@/components/thread/timeline/core-message-metadata";
 import { setAppIcons } from "@bb/shared-ui/icon-registry";
@@ -6,6 +7,7 @@ import type {
   ExperimentalTabRegistration,
   ComposerCustomization,
   ExperimentalAppOverlayRegistration,
+  ExperimentalProjectViewRegistration,
   ExperimentalCodeFenceRendererRegistration,
   PluginDiffRendererRegistration,
   ExperimentalComposerRegistration,
@@ -52,6 +54,7 @@ export interface PluginRegistrationSet {
   homepageSections: readonly PluginHomepageSectionRegistration[];
   settingsSections: readonly PluginSettingsSectionRegistration[];
   appOverlays?: readonly ExperimentalAppOverlayRegistration[];
+  projectViews?: readonly ExperimentalProjectViewRegistration[];
   navPanels: readonly LegacyNavPanelRegistration[];
   tabs?: readonly ExperimentalTabRegistration[];
   threadPanelActions: readonly LegacyThreadPanelActionRegistration[];
@@ -98,6 +101,8 @@ export interface PluginSettingsSectionSlot
   extends PluginSettingsSectionRegistration, PluginSlotBase {}
 export interface ExperimentalAppOverlaySlot
   extends ExperimentalAppOverlayRegistration, PluginSlotBase {}
+export interface ExperimentalProjectViewSlot
+  extends ExperimentalProjectViewRegistration, PluginSlotBase {}
 export interface PluginNavPanelSlot
   extends PluginNavPanelRegistration, PluginSlotBase {}
 export type PluginTabSlot = ExperimentalTabRegistration & PluginSlotBase;
@@ -184,6 +189,7 @@ export interface PluginSlotSnapshot {
   homepageSections: readonly PluginHomepageSectionSlot[];
   settingsSections: readonly PluginSettingsSectionSlot[];
   appOverlays: readonly ExperimentalAppOverlaySlot[];
+  projectViews: readonly ExperimentalProjectViewSlot[];
   navPanels: readonly PluginNavPanelSlot[];
   tabs: readonly PluginTabSlot[];
   threadPanelActions: readonly PluginThreadPanelActionSlot[];
@@ -222,6 +228,7 @@ export const EMPTY_PLUGIN_SLOT_SNAPSHOT: PluginSlotSnapshot = {
   homepageSections: [],
   settingsSections: [],
   appOverlays: [],
+  projectViews: coreProjectViews,
   navPanels: [],
   tabs: coreTabs,
   threadPanelActions: [],
@@ -267,6 +274,7 @@ const SLOT_KINDS: readonly SlotKind[] = [
   "homepageSections",
   "settingsSections",
   "appOverlays",
+  "projectViews",
   "navPanels",
   "tabs",
   "threadPanelActions",
@@ -351,6 +359,7 @@ function flattenRegistrations(
     homepageSections: stamp(set.homepageSections),
     settingsSections: stamp(set.settingsSections),
     appOverlays: stamp(set.appOverlays),
+    projectViews: stamp(set.projectViews),
     navPanels: stamp(set.navPanels),
     tabs: stamp(tabs),
     threadPanelActions: stamp(
@@ -413,6 +422,9 @@ function collectKind<K extends SlotKind>(
   const collected: PluginSlotSnapshot[K][number][] = [];
   if (kind === "tabs") {
     for (const slot of coreTabs) collected.push(slot);
+  }
+  if (kind === "projectViews") {
+    for (const slot of coreProjectViews) collected.push(slot);
   }
   if (kind === "messageMetadata") {
     for (const slot of coreMessageMetadata) collected.push(slot);

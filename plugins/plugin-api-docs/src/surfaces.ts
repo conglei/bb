@@ -549,6 +549,24 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         firstParty: ["Docs", "File Editor", "PDF preview"],
       },
       {
+        id: "project-view",
+        title: "Project views",
+        summary:
+          "Add a tab to every project's page, opened from the project's name in the sidebar. With this, a plugin can:",
+        bullets: [
+          "Show a dashboard, inbox or board scoped to the project in view",
+          "Get the project id as a prop and a URL of its own, /projects/<id>/views/<pluginId>.<viewId>",
+          "Sit beside bb's own Threads view in the same tab strip",
+          "Show a live count or dot on its tab",
+        ],
+        apiSymbols: [
+          "ExperimentalProjectViewRegistration",
+          "ExperimentalProjectViewProps",
+          "ExperimentalBadge",
+        ],
+        experimental: true,
+      },
+      {
         id: "app-overlay",
         title: "App-wide overlays",
         summary:

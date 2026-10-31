@@ -16,6 +16,11 @@ export type PaneContent =
   | {
       kind: "plugin-detail";
       pluginId: string;
+    }
+  | {
+      kind: "project-view";
+      projectId: string;
+      viewKey: string;
     };
 
 export interface PaneNode {

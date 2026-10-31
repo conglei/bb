@@ -64,6 +64,7 @@ import {
 import { PERMISSION_MODE_OPTIONS } from "@/lib/permission-mode-options";
 import { formatRelativeTime } from "@/lib/relative-time";
 import {
+  getProjectViewRoutePath,
   getSettingsMachineRoutePath,
   getSettingsRoutePath,
 } from "@/lib/route-paths";
@@ -373,6 +374,13 @@ export function ProjectDetailSettingsView() {
             <ResourceOverflowMenu
               label={`${project.name} actions`}
               items={[
+                {
+                  label: "Open project",
+                  icon: "FolderOpen",
+                  onSelect: () => {
+                    void navigate(getProjectViewRoutePath(project.id));
+                  },
+                },
                 {
                   label: "Rename",
                   icon: "Edit",

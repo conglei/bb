@@ -2379,6 +2379,39 @@ Docs: `frontend-core-slots.md`.
    standard slot-owned CSS retention are the right failure semantics for UI
    that may have no in-layout representation.
 
+## `app.slots.experimental_projectView` and `useBbNavigate().experimental_toProjectView` (`@get-bb/plugin-sdk/app`)
+
+Adds a tab to every project's page at
+`/projects/<projectId>/views/<pluginId>.<viewId>`. The component receives
+`{ projectId, isCompactViewport }`. bb's own "Threads" view
+(`apps/app/src/components/project/core-project-views.tsx`) registers through
+the same slot with `pluginId: "core"`, so core and plugins share one path. The
+page opens from the project's name in the sidebar (thread-list plugin), the
+project menus, the project settings page, and `bb project open`.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Per-project enablement.** Today every registered view appears in every
+   project. The planned `project_plugin_states` table hides views of plugins
+   turned off for a project and drops those plugins from the project's agent
+   context; confirm the slot needs no change once that lands.
+2. **Order and default view.** Views are ordered core first, then by plugin
+   id. Decide whether the order and the default view become a per-project
+   setting (synced preference or table) and whether `/projects/:projectId`
+   should open the page instead of redirecting to compose.
+3. **View identity.** `<pluginId>.<viewId>` keys the URL. Confirm the `.`
+   separator and that plugin ids can never contain one.
+4. **Badge contract.** `experimental_useBadge({ projectId })` mirrors
+   `navPanel`'s hook but is not rendered on the tab yet; render or drop it.
+5. **Split panes.** A project page is a `project-view` pane; switching tabs
+   replaces the pane content in place. Audit focus, back/forward, and
+   persistence across reloads.
+6. **Project scope for data.** Decide whether `bb.storage` and plugin
+   settings grow a per-project variant so views can keep per-project state
+   without inventing their own keying.
+
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** There are no consumers, and item 5 is

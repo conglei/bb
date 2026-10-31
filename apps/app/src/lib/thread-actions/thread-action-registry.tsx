@@ -252,6 +252,8 @@ function useLatestNavigate(
   >(() => ({
     toThread: (...args) => latest.current.toThread(...args),
     toProject: (...args) => latest.current.toProject(...args),
+    experimental_toProjectView: (...args) =>
+      latest.current.experimental_toProjectView(...args),
     toPluginPanel: (...args) => latest.current.toPluginPanel(...args),
     toCompose: (...args) => latest.current.toCompose(...args),
     openThreadPanel: createRetiredOpenPanel(panel),

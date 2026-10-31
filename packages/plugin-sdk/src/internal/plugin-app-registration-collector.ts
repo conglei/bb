@@ -4,6 +4,7 @@ import type {
   ExperimentalTabRegistration,
   ComposerCustomization,
   ExperimentalAppOverlayRegistration,
+  ExperimentalProjectViewRegistration,
   ExperimentalCodeFenceRendererRegistration,
   ExperimentalSidebarFooter,
   ExperimentalSidebarFooterActionRegistration,
@@ -307,6 +308,7 @@ export interface CollectedPluginAppRegistrations {
   homepageSections: PluginHomepageSectionRegistration[];
   settingsSections: PluginSettingsSectionRegistration[];
   appOverlays: ExperimentalAppOverlayRegistration[];
+  projectViews: ExperimentalProjectViewRegistration[];
   navPanels: LegacyNavPanelRegistration[];
   tabs: ExperimentalTabRegistration[];
   threadPanelActions: LegacyThreadPanelActionRegistration[];
@@ -441,6 +443,7 @@ export function collectPluginAppRegistrations(
     homepageSections: [],
     settingsSections: [],
     appOverlays: [],
+    projectViews: [],
     navPanels: [],
     tabs: [],
     get threadPanelActions() {
@@ -490,6 +493,7 @@ export function collectPluginAppRegistrations(
     homepageSection: new Set<string>(),
     settingsSection: new Set<string>(),
     appOverlay: new Set<string>(),
+    projectView: new Set<string>(),
     navPanel: new Set<string>(),
     tab: new Set<string>(),
     newThreadPanelAction: new Set<string>(),
@@ -736,6 +740,28 @@ export function collectPluginAppRegistrations(
         collected.appOverlays.push({
           id,
           component: requireComponent(kind, registration.component),
+        });
+      },
+      experimental_projectView(registration) {
+        const kind = "slots.experimental_projectView";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.projectView, id);
+        if (
+          registration.experimental_useBadge !== undefined &&
+          typeof registration.experimental_useBadge !== "function"
+        ) {
+          throw new Error(
+            `${kind}: "experimental_useBadge" must be a React hook function when set`,
+          );
+        }
+        collected.projectViews.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          icon: requireNonEmptyString(kind, "icon", registration.icon),
+          component: requireComponent(kind, registration.component),
+          ...(registration.experimental_useBadge !== undefined
+            ? { experimental_useBadge: registration.experimental_useBadge }
+            : {}),
         });
       },
       navPanel(registration) {

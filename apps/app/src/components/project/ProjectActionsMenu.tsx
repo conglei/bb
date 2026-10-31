@@ -16,7 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "@bb/shared-ui/dropdown-menu";
 import { usePathPickerHost } from "@/hooks/useLocalPathPicker";
-import { getSettingsProjectRoutePath } from "@/lib/route-paths";
+import {
+  getProjectViewRoutePath,
+  getSettingsProjectRoutePath,
+} from "@/lib/route-paths";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { useProjectActions } from "./ProjectActionsProvider";
 
@@ -57,6 +60,15 @@ export function ProjectActionsMenuItems({
 
   return (
     <>
+      <ActionMenuItem
+        surface={surface}
+        icon="FolderOpen"
+        onSelect={() => {
+          navigate(getProjectViewRoutePath(project.id));
+        }}
+      >
+        Open project
+      </ActionMenuItem>
       <ActionMenuItem
         surface={surface}
         icon="Settings"

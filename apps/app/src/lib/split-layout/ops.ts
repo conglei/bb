@@ -78,6 +78,12 @@ export function isSamePaneContent(
       candidate.pluginId === content.pluginId
     );
   }
+  if (content.kind === "project-view") {
+    return (
+      candidate.kind === "project-view" &&
+      candidate.projectId === content.projectId
+    );
+  }
   return (
     candidate.kind === "plugin-panel" &&
     candidate.pluginId === content.pluginId &&

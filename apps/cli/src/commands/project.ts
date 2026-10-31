@@ -7,6 +7,7 @@ import type {
   ProjectResponse,
   UpdateProjectSourceRequest,
 } from "@bb/server-contract";
+import { getProjectViewRoutePath } from "@bb/client-core";
 import { action } from "../action.js";
 import { createCliBbSdk } from "../client.js";
 import { resolveLocalHostId } from "../daemon.js";
@@ -34,6 +35,11 @@ interface ProjectCreateCommandOptions {
   machine?: string;
   name: string;
   root?: string;
+  json?: boolean;
+}
+
+interface ProjectOpenCommandOptions {
+  view?: string;
   json?: boolean;
 }
 
@@ -548,6 +554,25 @@ export function registerProjectCommands(
         const found = await sdk.projects.get({ projectId: id });
         if (outputJson(opts, found)) return;
         printProject(found);
+      }),
+    );
+
+  project
+    .command("open <id>")
+    .description("Print the URL of a project's page, optionally on one view")
+    .option(
+      "--view <viewKey>",
+      "View to open, as <pluginId>.<viewId> (default: core.threads)",
+    )
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (id: string, opts: ProjectOpenCommandOptions) => {
+        const sdk = createCliBbSdk(getUrl());
+        const found = await sdk.projects.get({ projectId: id });
+        const path = getProjectViewRoutePath(found.id, opts.view);
+        const url = new URL(path, getUrl()).toString();
+        if (outputJson(opts, { projectId: found.id, path, url })) return;
+        console.log(url);
       }),
     );
 

@@ -19,10 +19,12 @@ import {
   APP_ROOT_ROUTE_PATH,
   getPluginDetailRoutePath,
   getPluginPanelRoutePath,
+  getProjectViewRoutePath,
   getRootComposeRoutePath,
   getThreadRoutePath,
   PLUGIN_DETAIL_ROUTE_PATH,
   PLUGIN_PANEL_ROUTE_PATH,
+  PROJECT_VIEW_ROUTE_PATH,
 } from "@/lib/route-paths";
 
 const FIRST_PANE_ID = "pane-1";
@@ -67,6 +69,9 @@ export function paneContentRoute(content: PaneContent): string {
   if (content.kind === "plugin-detail") {
     return getPluginDetailRoutePath({ pluginId: content.pluginId });
   }
+  if (content.kind === "project-view") {
+    return getProjectViewRoutePath(content.projectId, content.viewKey);
+  }
   const panelRoute = getPluginPanelRoutePath({
     pluginId: content.pluginId,
     path: content.panelPath,
@@ -110,6 +115,14 @@ export function paneContentForPathname(pathname: string): PaneContent | null {
       threadId: personalThread.params.threadId,
     };
   }
+  const projectView = matchPath(PROJECT_VIEW_ROUTE_PATH, pathname);
+  if (projectView?.params.projectId && projectView.params.viewKey) {
+    return {
+      kind: "project-view",
+      projectId: decodePluginRouteParam(projectView.params.projectId),
+      viewKey: decodePluginRouteParam(projectView.params.viewKey),
+    };
+  }
   const detail = matchPath(PLUGIN_DETAIL_ROUTE_PATH, pathname);
   if (detail?.params.pluginId) {
     return {
@@ -139,9 +152,12 @@ export function reconcileLayoutForContent(
   const existing = findPaneByContent(layout.root, content);
   if (existing !== null) {
     const withRouteState =
-      existing.content.kind === "plugin-panel" &&
-      content.kind === "plugin-panel" &&
-      existing.content.subPath !== content.subPath
+      (existing.content.kind === "plugin-panel" &&
+        content.kind === "plugin-panel" &&
+        existing.content.subPath !== content.subPath) ||
+      (existing.content.kind === "project-view" &&
+        content.kind === "project-view" &&
+        existing.content.viewKey !== content.viewKey)
         ? replacePaneContent(layout, existing.paneId, content)
         : layout;
     return withRouteState.focusedPaneId === existing.paneId

@@ -81,6 +81,7 @@ import {
 import { LazyThreadDetailView as ThreadDetailView } from "./LazyThreadDetailView";
 import { LazyRootComposeView as RootComposeView } from "@/views/LazyRootComposeView";
 import { PluginPanelView } from "@/views/PluginPanelView";
+import { ProjectWorkspaceView } from "@/views/ProjectWorkspaceView";
 import {
   AppPageHeader,
   HEADER_ICON_BUTTON_CLASS,
@@ -1180,6 +1181,14 @@ function StandalonePaneContent({
   if (content.kind === "plugin-detail") {
     return <LazyPluginDetailPaneView pluginId={content.pluginId} />;
   }
+  if (content.kind === "project-view") {
+    return (
+      <ProjectWorkspaceView
+        projectId={content.projectId}
+        viewKey={content.viewKey}
+      />
+    );
+  }
   const panelEntry = navPanelChrome.find(
     (candidate) =>
       candidate.chrome.pluginId === content.pluginId &&
@@ -1288,7 +1297,11 @@ function NonThreadPaneContent({
   const panelChrome = panelEntry?.chrome;
   const label =
     panelChrome?.title ??
-    (content.kind === "plugin-detail" ? "Extension" : "New thread");
+    (content.kind === "plugin-detail"
+      ? "Extension"
+      : content.kind === "project-view"
+        ? "Project"
+        : "New thread");
   const handlePointerDown = (event: ReactPointerEvent) => {
     if (
       event.target instanceof Element &&
@@ -1388,7 +1401,9 @@ function NonThreadPaneContent({
                 >
                   {content.kind === "plugin-detail"
                     ? "Extension"
-                    : "New thread"}
+                    : content.kind === "project-view"
+                      ? "Project"
+                      : "New thread"}
                 </p>
               )}
             </div>
@@ -1407,6 +1422,11 @@ function NonThreadPaneContent({
           <RootComposeView />
         ) : content.kind === "plugin-detail" ? (
           <LazyPluginDetailPaneView pluginId={content.pluginId} />
+        ) : content.kind === "project-view" ? (
+          <ProjectWorkspaceView
+            projectId={content.projectId}
+            viewKey={content.viewKey}
+          />
         ) : (
           <PluginPanelView
             pluginId={content.pluginId}

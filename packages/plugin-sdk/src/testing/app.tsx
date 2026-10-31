@@ -38,6 +38,7 @@ import {
   type ComposerView,
   type ExperimentalTabRegistration,
   type ExperimentalAppOverlayRegistration,
+  type ExperimentalProjectViewRegistration,
   type ExperimentalSidebarNavigationActions,
   type ExperimentalSidebarNavigationTarget,
   type ExperimentalSidebarNavigationIconProps,
@@ -236,6 +237,11 @@ export type NavigateCall =
       options?: Parameters<BbNavigate["toThread"]>[1];
     }
   | { method: "toProject"; projectId: string }
+  | {
+      method: "experimental_toProjectView";
+      projectId: string;
+      options?: { viewKey?: string };
+    }
   | {
       method: "toPluginPanel";
       path: string;
@@ -2064,6 +2070,7 @@ export interface CapturedPluginApp {
   homepageSections: PluginHomepageSectionRegistration[];
   settingsSections: PluginSettingsSectionRegistration[];
   appOverlays: ExperimentalAppOverlayRegistration[];
+  projectViews: ExperimentalProjectViewRegistration[];
   navPanels: import("../internal/plugin-app-registration-collector.js").LegacyNavPanelRegistration[];
   tabs: ExperimentalTabRegistration[];
   threadPanelActions: import("../internal/plugin-app-registration-collector.js").LegacyThreadPanelActionRegistration[];
@@ -2999,6 +3006,13 @@ export function renderSlot<
     },
     toProject(projectId) {
       navigateCalls.push({ method: "toProject", projectId });
+    },
+    experimental_toProjectView(projectId, viewOptions) {
+      navigateCalls.push({
+        method: "experimental_toProjectView",
+        projectId,
+        ...(viewOptions !== undefined ? { options: viewOptions } : {}),
+      });
     },
     toPluginPanel(path, panelOptions) {
       navigateCalls.push({

@@ -28,6 +28,13 @@ const paneContentSchema = z.discriminatedUnion("kind", [
       pluginId: z.string().min(1),
     })
     .strict(),
+  z
+    .object({
+      kind: z.literal("project-view"),
+      projectId: z.string().min(1),
+      viewKey: z.string().min(1),
+    })
+    .strict(),
 ]);
 
 const paneNodeSchema: z.ZodType<PaneNode> = z

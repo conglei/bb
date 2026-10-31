@@ -49,6 +49,12 @@ export default definePluginApp((app) => {
     id: "floating-status",
     component: FloatingStatus,
   });
+  app.slots.experimental_projectView({
+    id: "inbox",
+    title: "Inbox",
+    icon: "Inbox",
+    component: ProjectInbox,
+  });
   app.slots.navPanel({
     id: "board",
     title: "Board",

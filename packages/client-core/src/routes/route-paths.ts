@@ -54,6 +54,9 @@ const PROJECTLESS_THREAD_DETAIL_ROUTE_PATH = "/threads/:threadId";
 export const LEGACY_PROJECT_SETTINGS_ROUTE_PATH =
   "/projects/:projectId/settings";
 export const PROJECT_ARCHIVED_ROUTE_PATH = "/projects/:projectId/archived";
+export const PROJECT_VIEW_ROUTE_PATH = "/projects/:projectId/views/:viewKey";
+export const CORE_PROJECT_VIEW_PLUGIN_ID = "core";
+export const DEFAULT_PROJECT_VIEW_KEY = "core.threads";
 const THREAD_DETAIL_ROUTE_PATH = "/projects/:projectId/threads/:threadId";
 export const PLUGIN_PANEL_ROUTE_PATH = "/plugins/:pluginId/:panelPath/*";
 
@@ -80,6 +83,28 @@ export function getProjectComposeRoutePath(projectId: string): string {
   return isProjectlessProjectId(projectId)
     ? getRootComposeRoutePath()
     : getLegacyProjectComposeRoutePath(projectId);
+}
+
+export function getProjectViewKey(pluginId: string, viewId: string): string {
+  return `${pluginId}.${viewId}`;
+}
+
+export function parseProjectViewKey(
+  viewKey: string,
+): { pluginId: string; viewId: string } | null {
+  const separator = viewKey.indexOf(".");
+  if (separator <= 0 || separator === viewKey.length - 1) return null;
+  return {
+    pluginId: viewKey.slice(0, separator),
+    viewId: viewKey.slice(separator + 1),
+  };
+}
+
+export function getProjectViewRoutePath(
+  projectId: string,
+  viewKey: string = DEFAULT_PROJECT_VIEW_KEY,
+): string {
+  return `/projects/${encodeURIComponent(projectId)}/views/${encodeURIComponent(viewKey)}`;
 }
 
 export function getSettingsRoutePath(section?: string): string {
@@ -283,6 +308,7 @@ export const ROUTE_PATTERNS: readonly string[] = [
   PROJECTLESS_ARCHIVED_ROUTE_PATH,
   LEGACY_PROJECT_SETTINGS_ROUTE_PATH,
   PROJECT_ARCHIVED_ROUTE_PATH,
+  PROJECT_VIEW_ROUTE_PATH,
   PROJECTLESS_THREAD_DETAIL_ROUTE_PATH,
   THREAD_DETAIL_ROUTE_PATH,
   PLUGIN_PANEL_ROUTE_PATH,

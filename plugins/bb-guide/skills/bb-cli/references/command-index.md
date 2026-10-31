@@ -60,6 +60,7 @@ This index lists every command path that the core CLI registers, including alias
 - `bb project content`
 - `bb project create`
 - `bb project show`
+- `bb project open`
 - `bb project update`
 - `bb project delete`
 

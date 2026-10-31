@@ -994,6 +994,37 @@ export interface PluginNavPanelRegistration {
 }
 
 /**
+ * Props passed to an `experimental_projectView` component. The view fills a
+ * project's page at `/projects/<projectId>/views/<pluginId>.<id>` below a tab
+ * strip bb owns.
+ */
+export interface ExperimentalProjectViewProps {
+  /** The project whose page shows this view; never the personal project. */
+  projectId: string;
+  /** Phone-width layout; the tab strip scrolls horizontally there. */
+  isCompactViewport: boolean;
+}
+
+/**
+ * Add a tab to every project's page (see
+ * {@link PluginAppSlots.experimental_projectView}). Core's own "Threads" view
+ * registers through the same slot and comes first.
+ */
+export interface ExperimentalProjectViewRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  title: string;
+  icon: BbIconName;
+  component: ComponentType<ExperimentalProjectViewProps>;
+  /**
+   * Optional React hook returning the tab's badge, or `null` for none, run in
+   * the plugin's scope with the project whose page is open. A hook that throws
+   * or returns an invalid badge shows no badge.
+   */
+  experimental_useBadge?: (props: { projectId: string }) => ExperimentalBadge | null;
+}
+
+/**
  * Context handed to a thread action tab's `run`.
  *
  * The action is thread-only and is never offered on the root New thread
@@ -3685,6 +3716,14 @@ export interface PluginAppSlots {
     registration: ExperimentalAppOverlayRegistration,
   ): void;
   navPanel(registration: PluginNavPanelRegistration): void;
+  /**
+   * Add a tab to every project's page (see
+   * {@link ExperimentalProjectViewRegistration}). The view key in the URL is
+   * `<pluginId>.<id>`. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_projectView(
+    registration: ExperimentalProjectViewRegistration,
+  ): void;
   /** Register a context-scoped tab. Experimental: see docs/api_to_audit.md. */
   experimental_tab<
     C extends ExperimentalTabContext,
@@ -5153,6 +5192,15 @@ export interface BbNavigate {
    */
   toThread(threadId: string, options?: { split?: boolean }): void;
   toProject(projectId: string): void;
+  /**
+   * Open a project's page on one of its views. `viewKey` is
+   * `<pluginId>.<viewId>`; omitted, the page opens on its default view.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_toProjectView(
+    projectId: string,
+    options?: { viewKey?: string },
+  ): void;
   /**
    * Navigate to one of this plugin's own nav panels by its `path`.
    * `subPath` targets a location inside the panel as unencoded

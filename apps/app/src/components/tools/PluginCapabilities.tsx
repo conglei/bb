@@ -218,6 +218,12 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
+      slots.projectViews,
+      "project-view",
+      "Adds a view to every project's page.",
+    ),
+    ...namedSlotItems(
+      pluginId,
       slots.appOverlays,
       "app-overlay",
       "Renders app-wide floating interface content.",

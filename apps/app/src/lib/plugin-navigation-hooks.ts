@@ -13,6 +13,7 @@ import {
   AUTOMATIONS_PLUGIN_ID,
   getPluginPanelRoutePath,
   getProjectComposeRoutePath,
+  getProjectViewRoutePath,
   getRootComposeRoutePath,
   getThreadRoutePath,
   AUTOMATION_EDIT_ROUTE_PATH,
@@ -97,6 +98,15 @@ export function useBbNavigate(): BbNavigate {
     (projectId: string) => {
       onNavigate?.();
       void navigate(getProjectComposeRoutePath(projectId));
+    },
+    [navigate, onNavigate],
+  );
+  const experimental_toProjectView = useCallback<
+    BbNavigate["experimental_toProjectView"]
+  >(
+    (projectId, options) => {
+      onNavigate?.();
+      void navigate(getProjectViewRoutePath(projectId, options?.viewKey));
     },
     [navigate, onNavigate],
   );
@@ -197,6 +207,7 @@ export function useBbNavigate(): BbNavigate {
     () => ({
       toThread,
       toProject,
+      experimental_toProjectView,
       toPluginPanel,
       toCompose,
       openThreadPanel,
@@ -208,6 +219,7 @@ export function useBbNavigate(): BbNavigate {
     [
       toThread,
       toProject,
+      experimental_toProjectView,
       toPluginPanel,
       toCompose,
       openThreadPanel,

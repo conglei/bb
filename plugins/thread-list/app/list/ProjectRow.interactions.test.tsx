@@ -493,6 +493,28 @@ describe("ProjectRow interactions", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("opens the project page from its name and from the menu", async () => {
+    const { navigateCalls, onToggleProjectCollapsed } = renderProjectRow();
+    fireEvent.click(screen.getByRole("button", { name: "Test project" }));
+    expect(navigateCalls).toEqual([
+      { method: "experimental_toProjectView", projectId: "proj_test" },
+    ]);
+    expect(onToggleProjectCollapsed).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "Test project actions" }),
+      { button: 0 },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Open project" }),
+    );
+    await waitFor(() => expect(navigateCalls).toHaveLength(2));
+    expect(navigateCalls[1]).toEqual({
+      method: "experimental_toProjectView",
+      projectId: "proj_test",
+    });
+  });
+
   it("links project settings and confirms removal through the SDK", async () => {
     const remove = vi.fn(sdkResult({ ok: true }));
     const { sdkCalls } = renderProjectRow(

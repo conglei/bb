@@ -68,6 +68,94 @@ describe("collectPluginAppRegistrations — experimental_appOverlay", () => {
   });
 });
 
+describe("collectPluginAppRegistrations — experimental_projectView", () => {
+  it("collects a view with its badge hook and omits absent optionals", () => {
+    const useBadge = () => null;
+    const collected = collectPluginAppRegistrations(
+      definePluginApp((app) => {
+        app.slots.experimental_projectView({
+          id: "inbox",
+          title: "Inbox",
+          icon: "Inbox",
+          component: Component,
+          experimental_useBadge: useBadge,
+        });
+        app.slots.experimental_projectView({
+          id: "board",
+          title: "Board",
+          icon: "Columns",
+          component: Component,
+        });
+      }),
+    );
+
+    expect(collected.projectViews).toEqual([
+      {
+        id: "inbox",
+        title: "Inbox",
+        icon: "Inbox",
+        component: Component,
+        experimental_useBadge: useBadge,
+      },
+      { id: "board", title: "Board", icon: "Columns", component: Component },
+    ]);
+    expect("experimental_useBadge" in collected.projectViews[1]!).toBe(false);
+  });
+
+  it("rejects duplicate ids, missing titles, malformed components and badge hooks", () => {
+    const duplicate = definePluginApp((app) => {
+      app.slots.experimental_projectView({
+        id: "inbox",
+        title: "Inbox",
+        icon: "Inbox",
+        component: Component,
+      });
+      app.slots.experimental_projectView({
+        id: "inbox",
+        title: "Again",
+        icon: "Inbox",
+        component: Component,
+      });
+    });
+    const untitled = definePluginApp((app) => {
+      app.slots.experimental_projectView({
+        id: "inbox",
+        title: "",
+        icon: "Inbox",
+        component: Component,
+      });
+    });
+    const malformed = definePluginApp((app) => {
+      app.slots.experimental_projectView({
+        id: "inbox",
+        title: "Inbox",
+        icon: "Inbox",
+        component: null as never,
+      });
+    });
+    const badBadge = definePluginApp((app) => {
+      app.slots.experimental_projectView({
+        id: "inbox",
+        title: "Inbox",
+        icon: "Inbox",
+        component: Component,
+        experimental_useBadge: "nope" as never,
+      });
+    });
+
+    expect(() => collectPluginAppRegistrations(duplicate)).toThrow(
+      'duplicate id "inbox"',
+    );
+    expect(() => collectPluginAppRegistrations(untitled)).toThrow(/"title"/);
+    expect(() => collectPluginAppRegistrations(malformed)).toThrow(
+      '"component" must be a React component function',
+    );
+    expect(() => collectPluginAppRegistrations(badBadge)).toThrow(
+      /"experimental_useBadge" must be a React hook function/,
+    );
+  });
+});
+
 describe("collectPluginAppRegistrations — experimental_threadAction", () => {
   const item = () => null;
   const useData = () => 1;

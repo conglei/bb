@@ -7,6 +7,8 @@ import * as pluginSdkApp from "@get-bb/plugin-sdk/app";
 import {
   type BbPluginApi,
   type ExperimentalAppOverlayProps,
+  type ExperimentalProjectViewProps,
+  type ExperimentalProjectViewRegistration,
   type ExperimentalMessageMetadataProps,
   type PluginAppBuilder,
   type PluginAppSlots,
@@ -279,6 +281,7 @@ type SlotPropsByName = {
   homepageSection: PluginHomepageSectionProps;
   settingsSection: PluginSettingsSectionProps;
   experimental_appOverlay: ExperimentalAppOverlayProps;
+  experimental_projectView: ExperimentalProjectViewProps;
   navPanel: PluginNavPanelProps;
   experimental_tab: ExperimentalThreadActionTabProps | PluginNavPanelProps;
   experimental_newThreadPanelAction: PluginNewThreadPanelProps;
@@ -367,6 +370,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   homepageSection: ["projectId"],
   settingsSection: [],
   experimental_appOverlay: [],
+  experimental_projectView: ["projectId", "isCompactViewport"],
   navPanel: ["subPath"],
   experimental_tab: ["threadId", "environment", "subPath", "params"],
   experimental_newThreadPanelAction: ["projectId", "params"],
@@ -534,6 +538,23 @@ const _assertAllNavPanelRegistrationFieldsListed: MissingNavPanelRegistrationFie
   ? true
   : never = true;
 void _assertAllNavPanelRegistrationFieldsListed;
+
+const PROJECT_VIEW_REGISTRATION_FIELDS = [
+  "id",
+  "title",
+  "icon",
+  "component",
+  "experimental_useBadge",
+] as const satisfies readonly (keyof ExperimentalProjectViewRegistration)[];
+
+type MissingProjectViewRegistrationField = Exclude<
+  keyof ExperimentalProjectViewRegistration,
+  (typeof PROJECT_VIEW_REGISTRATION_FIELDS)[number]
+>;
+const _assertAllProjectViewRegistrationFieldsListed: MissingProjectViewRegistrationField extends never
+  ? true
+  : never = true;
+void _assertAllProjectViewRegistrationFieldsListed;
 
 const SIDEBAR_FOOTER_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -787,6 +808,15 @@ describe("bb-plugin-authoring skill", () => {
       expect(
         skill,
         `navPanel registration field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+  });
+
+  it("documents every experimental_projectView registration field", () => {
+    for (const field of PROJECT_VIEW_REGISTRATION_FIELDS) {
+      expect(
+        skill,
+        `experimental_projectView registration field "${field}" is not documented in the skill`,
       ).toContain(field);
     }
   });

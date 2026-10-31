@@ -13,6 +13,7 @@ export type ProjectActionsMenuSurface = "context" | "dropdown";
 
 interface ProjectActionsMenuBaseProps {
   project: SidebarProject;
+  onOpen: () => void;
   onRename: () => void;
   onRemove: () => void;
   onCloseAutoFocus?: (event: Event) => void;
@@ -36,12 +37,16 @@ function stopProjectActionsMenuClickPropagation(event: MouseEvent) {
 export function ProjectActionsMenuItems({
   project,
   surface,
+  onOpen,
   onRename,
   onRemove,
   extraActions,
 }: ProjectActionsMenuItemsProps) {
   return (
     <>
+      <ActionMenuItem surface={surface} icon="FolderOpen" onSelect={onOpen}>
+        Open project
+      </ActionMenuItem>
       <ActionMenuItem surface={surface} icon="Settings" href={project.settingsHref}>
         Project settings
       </ActionMenuItem>
@@ -77,6 +82,7 @@ function ProjectActionsCompactLongPressMenu({
   disabled,
   project,
   onOpenChange,
+  onOpen,
   onRename,
   onRemove,
   extraActions,
@@ -90,6 +96,7 @@ function ProjectActionsCompactLongPressMenu({
         <ProjectActionsMenuItems
           project={project}
           surface="dropdown"
+          onOpen={onOpen}
           onRename={onRename}
           onRemove={onRemove}
           extraActions={extraActions}
@@ -106,6 +113,7 @@ function ProjectActionsDesktopContextMenu({
   disabled,
   project,
   onOpenChange,
+  onOpen,
   onRename,
   onRemove,
   onCloseAutoFocus,
@@ -124,6 +132,7 @@ function ProjectActionsDesktopContextMenu({
         <ProjectActionsMenuItems
           project={project}
           surface="context"
+          onOpen={onOpen}
           onRename={onRename}
           onRemove={onRemove}
           extraActions={extraActions}
