@@ -1837,8 +1837,20 @@ describe("thread runtime config", () => {
         });
         setProjectPluginScopeSource({
           listProjectScopedPlugins: () => [
-            { pluginId: "on", name: "On", icon: null, projectDefault: "on" },
-            { pluginId: "off", name: "Off", icon: null, projectDefault: "on" },
+            {
+              pluginId: "on",
+              name: "On",
+              icon: null,
+              projectDefault: "on",
+              hasProjectSettings: false,
+            },
+            {
+              pluginId: "off",
+              name: "Off",
+              icon: null,
+              projectDefault: "on",
+              hasProjectSettings: false,
+            },
           ],
         });
         setProjectPluginEnabled(harness.db, harness.hub, {

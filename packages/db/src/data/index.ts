@@ -223,6 +223,17 @@ export {
   listPluginSettingRows,
 } from "./plugin-storage.js";
 export {
+  deleteAllPluginProjectData,
+  deletePluginProjectData,
+  deletePluginProjectKvValue,
+  getPluginProjectKvValue,
+  getPluginProjectSettingsValues,
+  listPluginProjectKvKeys,
+  setPluginProjectKvValue,
+  setPluginProjectSettingsValues,
+} from "./plugin-project-storage.js";
+export type { PluginProjectScope } from "./plugin-project-storage.js";
+export {
   claimPluginScheduledRun,
   deletePluginSchedules,
   listDuePluginSchedules,

@@ -221,6 +221,12 @@ export const projectPluginEntrySchema = z.object({
   icon: z.string().nullable(),
   enabled: z.boolean(),
   source: z.enum(["project", "default"]),
+  /**
+   * Whether the plugin defined `bb.experimental_projectSettings`, so the
+   * project's Plugins section can show its per-project settings form. Older
+   * servers omit it.
+   */
+  hasProjectSettings: z.boolean().default(false),
 });
 export type ProjectPluginEntry = z.infer<typeof projectPluginEntrySchema>;
 

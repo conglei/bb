@@ -35,6 +35,7 @@ import plugin from "./server";
 const { bb, harness } = createFakePluginHost({
   pluginId: "my-plugin",
   settings: { apiToken: "tok" }, // pre-seeded stored values (secrets included)
+  experimental_projectSettings: { proj_1: { goal: "ship" } }, // pre-seeded per-project values
   sdk: { threads: { spawn: async () => ({ id: "th_1" }) } },
   experimental_callHostRpc: async ({ method, input, hostId, signal }) => {
     return { ok: true }; // validated against the method's output schema
@@ -56,6 +57,9 @@ await harness.behavior.runCli(["search", "x"]); // { exitCode, stdout, stderr }
 const svc = harness.behavior.runService("watcher"); // start now; svc.controller.abort(); await svc.done
 await harness.behavior.runSchedule("sync"); // no timers, no cron sweep
 await harness.behavior.setSettings({ apiToken: "next" }); // validates + fires onChange like a host save
+await harness.behavior.experimental_setProjectSettings("proj_1", {
+  goal: "ship",
+}); // per-project rows; onChange(projectId, next, prev)
 await harness.behavior.resolveAgentConfiguration(
   makePluginAgentConfigurationContext(),
 );

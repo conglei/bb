@@ -1,6 +1,7 @@
 import { Button } from "@bb/shared-ui/button";
 import { Switch } from "@bb/shared-ui/switch";
 import { PluginItemIcon } from "@/components/plugin/PluginIcon";
+import { PluginProjectSettingsForm } from "@/components/plugin/PluginProjectSettings";
 import {
   SettingsBadge,
   SettingsRow,
@@ -36,51 +37,61 @@ export function ProjectPluginsSection({ projectId }: { projectId: string }) {
           {entries.map((entry) => {
             const pending = pendingPluginId === entry.pluginId;
             return (
-              <SettingsRow
-                key={entry.pluginId}
-                data-testid="project-plugin-row"
-              >
-                <PluginItemIcon
-                  pluginId={entry.pluginId}
-                  icon={entry.icon}
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="min-w-0 truncate">{entry.name}</span>
+              <div key={entry.pluginId} className="py-2.5 first:pt-0 last:pb-0">
+                <SettingsRow
+                  className="py-0 first:pt-0 last:pb-0"
+                  data-testid="project-plugin-row"
+                >
+                  <PluginItemIcon
+                    pluginId={entry.pluginId}
+                    icon={entry.icon}
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="min-w-0 truncate">{entry.name}</span>
+                    {entry.source === "project" ? (
+                      <SettingsBadge>project override</SettingsBadge>
+                    ) : null}
+                  </div>
                   {entry.source === "project" ? (
-                    <SettingsBadge>project override</SettingsBadge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() =>
+                        setEnabled.mutate({
+                          projectId,
+                          pluginId: entry.pluginId,
+                          enabled: null,
+                        })
+                      }
+                    >
+                      Reset to default
+                    </Button>
                   ) : null}
-                </div>
-                {entry.source === "project" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
+                  <Switch
+                    checked={entry.enabled}
                     disabled={pending}
-                    onClick={() =>
+                    aria-label={`Use ${entry.name} in this project`}
+                    onCheckedChange={(checked) =>
                       setEnabled.mutate({
                         projectId,
                         pluginId: entry.pluginId,
-                        enabled: null,
+                        enabled: checked,
                       })
                     }
-                  >
-                    Reset to default
-                  </Button>
+                  />
+                </SettingsRow>
+                {entry.enabled && entry.hasProjectSettings ? (
+                  <div className="mt-3 pl-7">
+                    <PluginProjectSettingsForm
+                      pluginId={entry.pluginId}
+                      projectId={projectId}
+                    />
+                  </div>
                 ) : null}
-                <Switch
-                  checked={entry.enabled}
-                  disabled={pending}
-                  aria-label={`Use ${entry.name} in this project`}
-                  onCheckedChange={(checked) =>
-                    setEnabled.mutate({
-                      projectId,
-                      pluginId: entry.pluginId,
-                      enabled: checked,
-                    })
-                  }
-                />
-              </SettingsRow>
+              </div>
             );
           })}
         </SettingsRowList>

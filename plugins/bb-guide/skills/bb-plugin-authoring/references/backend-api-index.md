@@ -1,8 +1,6 @@
 # Backend API symbol index
 
-Use this index to check backend, host, AI-service, and test imports.
-Read the detailed backend references for behavior, fields, and examples.
-Read the installed declarations for exact current signatures.
+Check backend, host, AI-service, and test imports here; read the backend references for behavior and examples, and the installed declarations for exact signatures.
 
 ## `@get-bb/plugin-sdk`
 
@@ -66,6 +64,8 @@ Read the installed declarations for exact current signatures.
 - `ExperimentalLiveFileTarget`
 - `ExperimentalPermissionModePickerProps`
 - `ExperimentalPluginFixedTabReference`
+- `ExperimentalPluginProjectSettings`
+- `ExperimentalPluginProjectSettingsHandle`
 - `ExperimentalPluginRpcCaller`
 - `ExperimentalPluginRpcHandlerContext`
 - `ExperimentalPluginRpcHandlersWithContext`

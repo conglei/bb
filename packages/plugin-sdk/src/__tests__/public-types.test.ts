@@ -24,6 +24,7 @@ type ExpectedBbPluginApiKey =
   | "experimental_environments"
   | "experimental_hooks"
   | "experimental_machines"
+  | "experimental_projectSettings"
   | "onInstall"
   | "experimental_serverAccess"
   | "hosts"
@@ -43,6 +44,8 @@ type ExpectedBbPluginApiKey =
 
 const EXPECTED_BACKEND_ROOT_TYPE_EXPORTS = [
   "BbPluginApi",
+  "ExperimentalPluginProjectSettings",
+  "ExperimentalPluginProjectSettingsHandle",
   "MessageDispatchHookContext",
   "MessageDispatchHookDecision",
   "PluginAgents",

@@ -41,6 +41,7 @@ import type {
   PluginCliContext,
   PluginCliResult,
   PluginEnvironments,
+  ExperimentalPluginProjectSettings,
   PluginHooks,
   PluginHookHandler,
   PluginHookName,
@@ -140,6 +141,14 @@ import {
   readPluginSettingsValues,
   writePluginSettingsUpdate,
 } from "./plugin-settings.js";
+import {
+  applyPluginProjectSettingsUpdate,
+  createPluginProjectKvStorage,
+  readPluginProjectSettingsValues,
+  registerProjectSettingDescriptors,
+  type PluginProjectSettingsListener,
+  type PluginProjectSettingsRecord,
+} from "./plugin-project-settings.js";
 
 export type {
   BbPluginApi,
@@ -269,6 +278,7 @@ export interface PluginApiHandle {
     descriptors: PluginSettingDescriptors;
     listeners: PluginSettingsListener[];
   };
+  projectSettings: PluginProjectSettingsRecord;
   databaseHandles: Database.Database[];
   threadEventHandlers: PluginThreadEventHandlers;
   /** Hook handlers recorded by `bb.experimental_hooks.on`. */
@@ -511,6 +521,7 @@ export function createPluginApi(options: {
   ) => () => void;
   publishSignal: (channel: string, payload: unknown) => void;
   settingsChanged: () => void;
+  projectSettingsChanged: (projectId: string) => void;
   reportNeedsConfiguration: (message: string) => void;
   isAgentToolNameTaken: (name: string) => string | undefined;
   isEnvironmentProviderIdTaken: (id: string) => string | undefined;
@@ -581,6 +592,7 @@ export function createPluginApi(options: {
     publishSignal,
     invalidateRpc: optionsInvalidate,
     settingsChanged,
+    projectSettingsChanged,
     reportNeedsConfiguration,
     isAgentToolNameTaken,
     reportAgentToolProblem,
@@ -611,6 +623,10 @@ export function createPluginApi(options: {
   const openTunnelIngresses = new Set<() => Promise<void>>();
   const installHandlers: Array<() => void | Promise<void>> = [];
   const settingsRecord: PluginApiHandle["settings"] = {
+    descriptors: {},
+    listeners: [],
+  };
+  const projectSettingsRecord: PluginProjectSettingsRecord = {
     descriptors: {},
     listeners: [],
   };
@@ -750,6 +766,18 @@ export function createPluginApi(options: {
   let databaseHandle: Database.Database | undefined;
   const storage: PluginStorage = {
     kv,
+    experimental_forProject(projectId) {
+      assertLive();
+      if (typeof projectId !== "string" || projectId.length === 0) {
+        throw new Error("storage.experimental_forProject expects a project id");
+      }
+      return createPluginProjectKvStorage({
+        db,
+        pluginId,
+        projectId,
+        assertLive,
+      });
+    },
     database() {
       assertLive();
       if (databaseHandle?.open) return databaseHandle;
@@ -832,6 +860,62 @@ export function createPluginApi(options: {
         onChange(listener) {
           assertLive();
           settingsRecord.listeners.push(listener as PluginSettingsListener);
+        },
+      };
+    },
+  };
+
+  const experimental_projectSettings: ExperimentalPluginProjectSettings = {
+    define(descriptors) {
+      assertLive();
+      const validated = registerProjectSettingDescriptors(
+        projectSettingsRecord.descriptors,
+        descriptors as Record<string, unknown>,
+      );
+      type Values = PluginSettingsValues<typeof descriptors>;
+      const read = (projectId: string) =>
+        readPluginProjectSettingsValues({
+          db,
+          pluginId,
+          projectId,
+          descriptors: validated,
+        }) as Values;
+      return {
+        async get(projectId) {
+          assertLive();
+          return read(projectId);
+        },
+        async experimental_set(projectId, values) {
+          assertLive();
+          const rawValues: Record<string, unknown> = {};
+          for (const [key, value] of Object.entries(values)) {
+            rawValues[key] = value;
+          }
+          const errors = validateSettingsUpdate(validated, rawValues);
+          if (errors.length > 0) {
+            throw new Error(errors.join("; "));
+          }
+          const changed = applyPluginProjectSettingsUpdate({
+            db,
+            pluginId,
+            projectId,
+            record: projectSettingsRecord,
+            values: rawValues,
+            onListenerError: (error) => {
+              emitLog(
+                "warn",
+                `project settings onChange listener failed: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            },
+          });
+          if (changed && activated) projectSettingsChanged(projectId);
+          return read(projectId);
+        },
+        onChange(listener) {
+          assertLive();
+          projectSettingsRecord.listeners.push(
+            listener as PluginProjectSettingsListener,
+          );
         },
       };
     },
@@ -1421,6 +1505,7 @@ export function createPluginApi(options: {
     pluginId,
     log,
     settings,
+    experimental_projectSettings,
     storage,
     http,
     rpc,
@@ -1477,6 +1562,7 @@ export function createPluginApi(options: {
     disposeHooks,
     installHandlers,
     settings: settingsRecord,
+    projectSettings: projectSettingsRecord,
     databaseHandles,
     threadEventHandlers,
     hooks,

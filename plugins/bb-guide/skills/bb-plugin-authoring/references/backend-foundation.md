@@ -122,12 +122,47 @@ listeners receive the new values. A save retries the load of a plugin in
 `needs-configuration`. Use `bb plugin reload <id>` only when the change or
 plugin requires it.
 
+### bb.experimental_projectSettings
+
+`bb.experimental_projectSettings.define(descriptors)` declares settings stored
+**once per project**. It takes the same descriptors as `bb.settings` (types
+`ExperimentalPluginProjectSettings`, `ExperimentalPluginProjectSettingsHandle`)
+with one exception: a `secret: true` descriptor throws, because per-project
+values live in bb.db rows, not secret files. Keys are a separate namespace
+from `bb.settings`, each defined once per plugin.
+
+```ts
+const projectSettings = bb.experimental_projectSettings.define({
+  goal: { type: "string", label: "Goal", experimental_multiline: true },
+  autoTriage: { type: "boolean", label: "Triage new threads", default: false },
+});
+if (projectId) {
+  const { goal } = await projectSettings.get(projectId); // load-safe; defaults for projects with nothing stored
+  await projectSettings.experimental_set(projectId, { autoTriage: true }); // null unsets; unknown project throws
+}
+projectSettings.onChange((projectId, next, prev) => {});
+```
+
+The project settings page renders the fields under the plugin's row in the
+project's "Plugins" section (only while the plugin is on for that project);
+`bb plugin config <id> --project <projectId> [set|unset]`,
+`GET`/`PUT /plugins/:id/projects/:projectId/settings` and
+`sdk.plugins.getProjectSettings` / `updateProjectSettings` reach the same
+rows. `onChange` fires for every write path, only when that project's
+effective values changed. Rows are deleted with the project and when the
+plugin is removed.
+
 ### bb.storage
 
 - `bb.storage.kv` — namespaced JSON key-value rows in bb.db:
   `get<T>(key)`, `set(key, value)`, `delete(key)`, `list(prefix?)`. Values
   are capped at **256KB each** — kv is for cursors, links, and small state;
   caches and datasets go in the plugin database.
+- `bb.storage.experimental_forProject(projectId)` — a `PluginKvStorage` over
+  rows scoped to one project: same methods and 256KB cap, but keys are
+  independent per project and invisible to `kv` and to other projects.
+  Writes to an unknown project throw. Rows are deleted with the project and
+  when the plugin is removed.
 - `bb.storage.database()` — the plugin's own better-sqlite3 database at
   `<dataDir>/plugins/<id>/data.db` (WAL, busy_timeout 5000). Handles are
   host-tracked and closed on reload; a closed handle throws.

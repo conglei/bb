@@ -14,6 +14,7 @@ export interface ProjectScopedPlugin {
   name: string;
   icon: string | null;
   projectDefault: PluginProjectDefault;
+  hasProjectSettings: boolean;
 }
 
 export interface ProjectPluginScopeSource {
@@ -129,6 +130,7 @@ export function listProjectPlugins(
         icon: plugin.icon,
         enabled: override ?? plugin.projectDefault === "on",
         source: override === undefined ? "default" : "project",
+        hasProjectSettings: plugin.hasProjectSettings,
       };
     });
 }

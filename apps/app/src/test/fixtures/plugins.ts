@@ -135,6 +135,7 @@ export function makeInstalledPlugin(
     cliCommand: null,
     capabilities: [],
     hasSettings: false,
+    hasProjectSettings: false,
     projectDefault: "on",
     app: { hasApp: false, bundle: null },
     logoUrl: null,

@@ -172,6 +172,7 @@ const BB_PLUGIN_API_KEYS = [
   "pluginId",
   "log",
   "settings",
+  "experimental_projectSettings",
   "storage",
   "http",
   "rpc",

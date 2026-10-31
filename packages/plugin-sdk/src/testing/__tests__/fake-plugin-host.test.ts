@@ -303,6 +303,39 @@ describe("storage", () => {
     ).rejects.toThrow(/limit is 262144 \(256KB\)/);
   });
 
+  it("experimental_forProject keeps kv per project, apart from plugin-wide kv, with the same cap", async () => {
+    const { bb, harness } = createFakePluginHost();
+    const a = bb.storage.experimental_forProject("proj_a");
+    const b = bb.storage.experimental_forProject("proj_b");
+    await a.set("cursor", 1);
+    await a.set("other", "x");
+    await b.set("cursor", 2);
+    await bb.storage.kv.set("cursor", "global");
+    expect(await a.get("cursor")).toBe(1);
+    expect(await b.get("cursor")).toBe(2);
+    expect(await bb.storage.kv.get("cursor")).toBe("global");
+    expect(await bb.storage.experimental_forProject("proj_a").list()).toEqual([
+      "cursor",
+      "other",
+    ]);
+    expect(await a.list("cur")).toEqual(["cursor"]);
+    await a.delete("cursor");
+    expect(await a.get("cursor")).toBeUndefined();
+    expect(await b.get("cursor")).toBe(2);
+    await expect(a.set("big", "x".repeat(256 * 1024))).rejects.toThrow(
+      /limit is 262144 \(256KB\)/,
+    );
+    expect(() => bb.storage.experimental_forProject("")).toThrow(
+      "expects a project id",
+    );
+
+    const reloaded = await harness.lifecycle.reload(() => {});
+    expect(
+      await reloaded.bb.storage.experimental_forProject("proj_b").get("cursor"),
+    ).toBe(2);
+    await reloaded.harness.dispose();
+  });
+
   it("database() returns one shared WAL database and migrate() is append-only by index", () => {
     const { bb } = createFakePluginHost();
     const db = bb.storage.database();
@@ -440,6 +473,106 @@ describe("settings", () => {
     await expect(harness.setSettings({ retries: Number.NaN })).rejects.toThrow(
       "expects a finite number",
     );
+  });
+
+  it("stores experimental_projectSettings per project and fires onChange with the project id", async () => {
+    const { bb, harness } = createFakePluginHost({
+      experimental_projectSettings: { proj_a: { mode: "slow" } },
+    });
+    const handle = bb.experimental_projectSettings.define({
+      mode: {
+        type: "select",
+        label: "Mode",
+        options: ["fast", "slow"],
+        default: "fast",
+      },
+      retries: {
+        type: "number",
+        label: "Retries",
+        experimental_schema: z.number().int().min(0).max(5),
+        default: 3,
+      },
+      note: { type: "string", label: "Note" },
+    });
+    expect(
+      harness.registrations.experimental_projectSettingsDescriptors,
+    ).toEqual(
+      expect.objectContaining({
+        mode: expect.anything(),
+        note: expect.anything(),
+      }),
+    );
+    expect(await handle.get("proj_a")).toEqual({
+      mode: "slow",
+      retries: 3,
+      note: undefined,
+    });
+    expect(await handle.get("proj_b")).toEqual({
+      mode: "fast",
+      retries: 3,
+      note: undefined,
+    });
+
+    const changes: Array<{ projectId: string; next: unknown; prev: unknown }> =
+      [];
+    handle.onChange((projectId, next, prev) =>
+      changes.push({ projectId, next, prev }),
+    );
+    await expect(
+      harness.behavior.experimental_setProjectSettings("proj_b", { nope: "x" }),
+    ).rejects.toThrow('unknown setting "nope"');
+    await expect(
+      handle.experimental_set("proj_b", { retries: 9 }),
+    ).rejects.toThrow("Too big");
+
+    await harness.behavior.experimental_setProjectSettings("proj_b", {
+      note: "hi",
+    });
+    expect(changes).toEqual([
+      {
+        projectId: "proj_b",
+        next: { mode: "fast", retries: 3, note: "hi" },
+        prev: { mode: "fast", retries: 3, note: undefined },
+      },
+    ]);
+    await harness.behavior.experimental_setProjectSettings("proj_b", {
+      note: "hi",
+    });
+    expect(changes).toHaveLength(1);
+    expect(
+      await handle.experimental_set("proj_a", { mode: null, retries: 1 }),
+    ).toEqual({ mode: "fast", retries: 1, note: undefined });
+    expect(changes).toHaveLength(2);
+    expect(changes[1]?.projectId).toBe("proj_a");
+    expect(await handle.get("proj_b")).toMatchObject({ note: "hi" });
+
+    const reloaded = await harness.lifecycle.reload((next) => {
+      next.experimental_projectSettings.define({
+        note: { type: "string", label: "Note" },
+      });
+    });
+    expect(
+      reloaded.harness.registrations.experimental_projectSettingsDescriptors,
+    ).toEqual({ note: { type: "string", label: "Note" } });
+    await reloaded.harness.dispose();
+  });
+
+  it("refuses secret project settings and duplicate keys", () => {
+    const { bb } = createFakePluginHost();
+    expect(() =>
+      bb.experimental_projectSettings.define({
+        token: { type: "string", label: "Token", secret: true },
+      }),
+    ).toThrow('project setting "token" cannot be secret');
+    bb.experimental_projectSettings.define({
+      note: { type: "string", label: "Note" },
+    });
+    expect(() =>
+      bb.experimental_projectSettings.define({
+        note: { type: "string", label: "Again" },
+      }),
+    ).toThrow('setting "note" is already defined');
+    bb.settings.define({ note: { type: "string", label: "Plugin-wide" } });
   });
 
   it("rejects inherited object keys as unknown settings, like the production host", async () => {

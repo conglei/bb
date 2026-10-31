@@ -1884,7 +1884,11 @@ export function registerPluginCommands(
   plugin
     .command("config <id> [action] [key] [value]")
     .description(
-      "Show a plugin's settings, or change them: config <id> set <key> <value> | config <id> unset <key>",
+      "Show a plugin's settings, or change them: config <id> set <key> <value> | config <id> unset <key>. With --project <projectId>, the plugin's per-project settings for that project",
+    )
+    .option(
+      "--project <projectId>",
+      "Operate on the plugin's per-project settings (bb.experimental_projectSettings) for this project",
     )
     .option("--json", "Output JSON")
     .allowUnknownOption()
@@ -1896,7 +1900,7 @@ export function registerPluginCommands(
           actionName: string | undefined,
           key: string | undefined,
           value: string | undefined,
-          opts: JsonOutputOptions,
+          opts: JsonOutputOptions & { project?: string },
           command: Command,
         ) => {
           const rawArgs = (program as Command & { rawArgs: string[] }).rawArgs;
@@ -1919,7 +1923,16 @@ export function registerPluginCommands(
             command.error(
               `error: too many arguments for 'config'. Expected ${expectedArgumentCount} arguments but got ${command.args.length}.`,
             );
-          const settingsPath = `/${encodeURIComponent(id)}/settings`;
+          const projectId = opts.project?.trim();
+          if (opts.project !== undefined && !projectId) {
+            command.error(
+              "error: option '--project <projectId>' needs a project id",
+            );
+          }
+          const settingsPath = projectId
+            ? `/${encodeURIComponent(id)}/projects/${encodeURIComponent(projectId)}/settings`
+            : `/${encodeURIComponent(id)}/settings`;
+          const usageSuffix = projectId ? " --project <projectId>" : "";
           if (actionName === undefined) {
             const result = pluginSettingsResultSchema.parse(
               await callPlugins(getUrl(), settingsPath, "GET"),
@@ -1941,15 +1954,17 @@ export function registerPluginCommands(
           ) {
             console.error(
               actionName === "set"
-                ? "Usage: bb plugin config <id> set <key> <value>"
-                : "Usage: bb plugin config <id> unset <key>",
+                ? `Usage: bb plugin config <id> set <key> <value>${usageSuffix}`
+                : `Usage: bb plugin config <id> unset <key>${usageSuffix}`,
             );
             process.exit(1);
           }
           let parsedValue: string | number | boolean | null = null;
           if (actionName === "set") {
             if (value === undefined) {
-              console.error("Usage: bb plugin config <id> set <key> <value>");
+              console.error(
+                `Usage: bb plugin config <id> set <key> <value>${usageSuffix}`,
+              );
               process.exit(1);
             }
             const current = pluginSettingsResultSchema.parse(

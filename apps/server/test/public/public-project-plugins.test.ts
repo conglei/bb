@@ -72,6 +72,7 @@ describe("project plugin routes", () => {
           icon: "Zap",
           enabled: false,
           source: "default",
+          hasProjectSettings: false,
         },
         {
           pluginId: "notes",
@@ -79,6 +80,7 @@ describe("project plugin routes", () => {
           icon: "Zap",
           enabled: true,
           source: "default",
+          hasProjectSettings: false,
         },
       ]);
 

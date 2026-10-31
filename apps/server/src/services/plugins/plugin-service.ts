@@ -63,6 +63,7 @@ import {
 import {
   claimPluginScheduledRun,
   deleteAllPluginKvValues,
+  deleteAllPluginProjectData,
   deleteAllPluginSettings,
   deleteInstalledPlugin,
   deletePluginSchedules,
@@ -156,6 +157,11 @@ import {
   PluginSettingsValidationError,
   type PluginSettingsView,
 } from "./plugin-settings.js";
+import {
+  applyPluginProjectSettingsUpdate,
+  assertProjectExists,
+  buildPluginProjectSettingsView,
+} from "./plugin-project-settings.js";
 import { createPluginActivation } from "./plugin-activation.js";
 import {
   createManagedPluginArtifacts,
@@ -372,6 +378,20 @@ export interface PluginService {
     id: string,
     values: Record<string, unknown>,
   ): Promise<PluginSettingsView | undefined>;
+  /**
+   * The plugin's per-project settings view for one project, or `undefined`
+   * when the plugin is not running or defined no project settings. Throws
+   * `UnknownProjectError` for a project that does not exist.
+   */
+  getProjectSettings(
+    id: string,
+    projectId: string,
+  ): PluginSettingsView | undefined;
+  updateProjectSettings(
+    id: string,
+    projectId: string,
+    values: Record<string, unknown>,
+  ): PluginSettingsView | undefined;
   getHttpRoute(
     id: string,
     method: string,
@@ -1119,6 +1139,10 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           hasSettings:
             loadedPlugin !== undefined &&
             Object.keys(loadedPlugin.handle.settings.descriptors).length > 0,
+          hasProjectSettings:
+            loadedPlugin !== undefined &&
+            Object.keys(loadedPlugin.handle.projectSettings.descriptors)
+              .length > 0,
           projectDefault:
             loadedPlugin?.manifest.projectDefault ??
             identity?.manifest.projectDefault ??
@@ -1292,6 +1316,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     forgetMutableRoot(row.rootDir);
     deletePluginSchedules(deps.db, row.id);
     deleteAllPluginSettings(deps.db, row.id);
+    deleteAllPluginProjectData(deps.db, row.id);
     forgetPluginProjectStates(deps.db, row.id);
     await rm(pluginSecretsDir(deps.dataDir, row.id), {
       recursive: true,
@@ -2047,6 +2072,46 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       return buildPluginSettingsView(storeArgs);
     },
 
+    getProjectSettings(id, projectId) {
+      const plugin = loaded.get(id);
+      if (!plugin) return undefined;
+      const descriptors = plugin.handle.projectSettings.descriptors;
+      if (Object.keys(descriptors).length === 0) return undefined;
+      assertProjectExists(deps.db, projectId);
+      return buildPluginProjectSettingsView({
+        db: deps.db,
+        pluginId: id,
+        projectId,
+        descriptors,
+      });
+    },
+
+    updateProjectSettings(id, projectId, values) {
+      const plugin = loaded.get(id);
+      if (!plugin) return undefined;
+      const record = plugin.handle.projectSettings;
+      if (Object.keys(record.descriptors).length === 0) return undefined;
+      const changed = applyPluginProjectSettingsUpdate({
+        db: deps.db,
+        pluginId: id,
+        projectId,
+        record,
+        values,
+        onListenerError: (error) => {
+          logger.warn(
+            `plugin ${id} project settings onChange listener failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        },
+      });
+      if (changed) deps.onProjectSettingsChanged?.({ pluginId: id, projectId });
+      return buildPluginProjectSettingsView({
+        db: deps.db,
+        pluginId: id,
+        projectId,
+        descriptors: record.descriptors,
+      });
+    },
+
     getHttpRoute(id, method, path) {
       const normalizedMethod = method.toUpperCase();
       return wireLookup(id, (plugin) =>
@@ -2273,6 +2338,8 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           name: plugin.manifest.name,
           icon: plugin.manifest.branding.icon ?? null,
           projectDefault: plugin.manifest.projectDefault,
+          hasProjectSettings:
+            Object.keys(plugin.handle.projectSettings.descriptors).length > 0,
         }));
     },
 

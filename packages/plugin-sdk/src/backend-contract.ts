@@ -170,6 +170,55 @@ export interface PluginSettings {
   ): PluginSettingsHandle<Ds>;
 }
 
+/**
+ * One set of descriptors whose values are stored once per project. The same
+ * descriptor types as {@link PluginSettings}, except that `secret: true` is
+ * rejected by `define`: per-project values live in bb.db rows, never in
+ * secret files. Values for a project that has none stored read as the
+ * descriptor defaults; deleting the project deletes its rows.
+ * Experimental: see docs/api_to_audit.md.
+ */
+export interface ExperimentalPluginProjectSettingsHandle<
+  Ds extends Record<string, PluginSettingDescriptor>,
+> {
+  /** Load-safe: callable inside the factory. */
+  get(projectId: string): Promise<PluginSettingsValues<Ds>>;
+  /**
+   * Validate and persist this handle's fields for one project; `null` unsets
+   * a stored value. Rejects an unknown `projectId`.
+   */
+  experimental_set(
+    projectId: string,
+    values: Partial<{
+      [K in keyof Ds]: PluginSettingValueOf<Ds[K]> | null;
+    }>,
+  ): Promise<PluginSettingsValues<Ds>>;
+  /**
+   * Fires after a project's effective values change through any write: this
+   * handle, the `PUT /plugins/:id/projects/:projectId/settings` route, the
+   * SDK, or `bb plugin config <id> --project <project>`.
+   */
+  onChange(
+    listener: (
+      projectId: string,
+      next: PluginSettingsValues<Ds>,
+      prev: PluginSettingsValues<Ds>,
+    ) => void,
+  ): void;
+}
+
+export interface ExperimentalPluginProjectSettings {
+  /**
+   * Declare per-project settings. Keys share the plugin's project-settings
+   * namespace, so a key may be defined once per plugin; a `secret: true`
+   * descriptor throws. The project settings form in a project's Plugins
+   * section renders every defined descriptor.
+   */
+  define<Ds extends Record<string, PluginSettingDescriptor>>(
+    descriptors: Ds,
+  ): ExperimentalPluginProjectSettingsHandle<Ds>;
+}
+
 // ---------------------------------------------------------------------------
 // Storage (design §4.3).
 // ---------------------------------------------------------------------------
@@ -184,6 +233,15 @@ export interface PluginKvStorage {
 export interface PluginStorage {
   /** Namespaced JSON key-value rows in bb.db; values ≤256KB each. */
   kv: PluginKvStorage;
+  /**
+   * JSON key-value rows in bb.db scoped to one project: the same contract
+   * and 256KB cap as `kv`, but keys are independent per project and
+   * invisible to `kv` and to other projects. Rows are deleted with the
+   * project and when the plugin is removed. The handle is cheap to create;
+   * writes to an unknown `projectId` throw. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_forProject(projectId: string): PluginKvStorage;
   /**
    * The plugin's own SQLite database at <dataDir>/plugins/<id>/data.db — the
    * server's better-sqlite3, WAL mode, busy_timeout 5000. Returns the same
@@ -2231,6 +2289,11 @@ export interface BbPluginApi {
   readonly log: PluginLogger;
   /** Declarative settings (design §4.2). */
   readonly settings: PluginSettings;
+  /**
+   * Declarative settings stored once per project. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  readonly experimental_projectSettings: ExperimentalPluginProjectSettings;
   /** Namespaced KV + per-plugin database (design §4.3). */
   readonly storage: PluginStorage;
   /** HTTP routes under /api/v1/plugins/<id>/http/* (design §4.6). */

@@ -1805,6 +1805,9 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
         deps.onSettingsChanged?.(row.id);
         settingsChanged();
       },
+      projectSettingsChanged: (projectId) => {
+        deps.onProjectSettingsChanged?.({ pluginId: row.id, projectId });
+      },
       reportNeedsConfiguration: (message) => {
         reportNeedsConfiguration(row.id, message);
       },

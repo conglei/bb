@@ -813,6 +813,9 @@ export function createApp(
       deps.providerNativeRoots.invalidate(pluginId);
       deps.providerRegistry.forgetAllInstalled();
     },
+    onProjectSettingsChanged: ({ projectId }) => {
+      deps.hub.notifyProject(projectId, ["plugin-project-settings-changed"]);
+    },
     onPluginUnregistered: (pluginId) => {
       requestQueuedMessageDispatch(deps, {
         kind: "plugin-unregistered",

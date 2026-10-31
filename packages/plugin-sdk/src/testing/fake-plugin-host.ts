@@ -38,6 +38,7 @@ import {
   providerDeclarationIconRefusal,
   providerIconRefusalMessage,
   providerWithoutBridgeMessage,
+  registerProjectSettingDescriptors,
   registerSettingDescriptors,
   runPluginStorageMigrations,
   undeclaredIconProblem,
@@ -110,6 +111,7 @@ import type {
   PluginSettingDescriptors,
   PluginSettingValue,
   PluginSettings,
+  ExperimentalPluginProjectSettings,
   PluginSettingsValues,
   PluginStatusApi,
   PluginStorage,
@@ -268,6 +270,8 @@ export interface ExperimentalFakeHostRpcCall {
 /** Everything the plugin registered, exposed raw for assertions. */
 export interface FakePluginRegistrations {
   settingsDescriptors: PluginSettingDescriptors;
+  /** Descriptors passed to `bb.experimental_projectSettings.define`. */
+  experimental_projectSettingsDescriptors: PluginSettingDescriptors;
   httpRoutes: FakeHttpRouteRecord[];
   websocketRoutes: ExperimentalFakeWebSocketRouteRecord[];
   experimental_publishedRpcMethods: Array<
@@ -399,6 +403,18 @@ export interface FakePluginBehaviorDrivers {
    * unknown keys or wrong value types.
    */
   setSettings(values: Record<string, PluginSettingValue | null>): Promise<void>;
+  /**
+   * Apply a per-project settings update the way the host's project settings
+   * save does: validate against `bb.experimental_projectSettings`
+   * descriptors (`null` unsets), store under `projectId`, and fire that
+   * handle's `onChange(projectId, next, prev)` listeners when the project's
+   * effective values changed. Any project id is accepted here; the real host
+   * rejects unknown projects.
+   */
+  experimental_setProjectSettings(
+    projectId: string,
+    values: Record<string, PluginSettingValue | null>,
+  ): Promise<void>;
   /**
    * Invoke a registered rpc method with host semantics: input/output schemas,
    * strict JSON result normalization, and structured failure codes. Rejects
@@ -571,6 +587,14 @@ export interface CreateFakePluginHostOptions {
    * the descriptor default on read, like the host.
    */
   settings?: Record<string, PluginSettingValue>;
+  /**
+   * Pre-seeded per-project settings values keyed by project id, as if saved
+   * through `bb.experimental_projectSettings` before this load.
+   */
+  experimental_projectSettings?: Record<
+    string,
+    Record<string, PluginSettingValue>
+  >;
   /** Initial `bb.sdk` stubs; extend later via `harness.sdk.stub`. */
   sdk?: FakeSdkOverrides;
   /** Static manifest skill ids available to configure() in this fake host. */
@@ -670,8 +694,10 @@ function throwRpcError(error: PluginRpcError): never {
 
 interface FakePluginPersistentState {
   kvRows: Map<string, string>;
+  projectKvRows: Map<string, Map<string, string>>;
   storageRoot: string;
   storedSettings: Map<string, PluginSettingValue>;
+  storedProjectSettings: Map<string, Map<string, PluginSettingValue>>;
 }
 
 const FAKE_TUNNEL_INGRESS_FIRST_PORT = 41_000;
@@ -695,9 +721,15 @@ function createFakePluginHostInternal(
     sharedState ??
     ({
       kvRows: new Map<string, string>(),
+      projectKvRows: new Map<string, Map<string, string>>(),
       storageRoot: mkdtempSync(join(tmpdir(), "bb-fake-plugin-host-")),
       storedSettings: new Map<string, PluginSettingValue>(
         Object.entries(options.settings ?? {}),
+      ),
+      storedProjectSettings: new Map(
+        Object.entries(options.experimental_projectSettings ?? {}).map(
+          ([projectId, values]) => [projectId, new Map(Object.entries(values))],
+        ),
       ),
     } satisfies FakePluginPersistentState);
   const pluginId = options.pluginId ?? "test-plugin";
@@ -728,40 +760,43 @@ function createFakePluginHostInternal(
   };
 
   // --- storage ---
-  const kvRows = persistentState.kvRows;
-  const kv: PluginKvStorage = {
-    async get(key) {
-      assertLive();
-      const raw = kvRows.get(key);
-      if (raw === undefined) return undefined;
-      return JSON.parse(raw);
-    },
-    async set(key, value) {
-      assertLive();
-      const json = JSON.stringify(value);
-      if (json === undefined) {
-        throw new Error(`kv value for "${key}" is not JSON-serializable`);
-      }
-      const bytes = Buffer.byteLength(json, "utf8");
-      if (bytes > KV_VALUE_MAX_BYTES) {
-        throw new Error(
-          `kv value for "${key}" is ${bytes} bytes; the limit is ${KV_VALUE_MAX_BYTES} (256KB). ` +
-            `Store large data in storage.database() instead.`,
-        );
-      }
-      kvRows.set(key, json);
-    },
-    async delete(key) {
-      assertLive();
-      kvRows.delete(key);
-    },
-    async list(prefix) {
-      assertLive();
-      return [...kvRows.keys()]
-        .filter((key) => prefix === undefined || key.startsWith(prefix))
-        .sort();
-    },
-  };
+  function kvOver(rows: Map<string, string>): PluginKvStorage {
+    return {
+      async get(key) {
+        assertLive();
+        const raw = rows.get(key);
+        if (raw === undefined) return undefined;
+        return JSON.parse(raw);
+      },
+      async set(key, value) {
+        assertLive();
+        const json = JSON.stringify(value);
+        if (json === undefined) {
+          throw new Error(`kv value for "${key}" is not JSON-serializable`);
+        }
+        const bytes = Buffer.byteLength(json, "utf8");
+        if (bytes > KV_VALUE_MAX_BYTES) {
+          throw new Error(
+            `kv value for "${key}" is ${bytes} bytes; the limit is ${KV_VALUE_MAX_BYTES} (256KB). ` +
+              `Store large data in storage.database() instead.`,
+          );
+        }
+        rows.set(key, json);
+      },
+      async delete(key) {
+        assertLive();
+        rows.delete(key);
+      },
+      async list(prefix) {
+        assertLive();
+        return [...rows.keys()]
+          .filter((key) => prefix === undefined || key.startsWith(prefix))
+          .sort();
+      },
+    };
+  }
+  const kv = kvOver(persistentState.kvRows);
+  const projectKvRows = persistentState.projectKvRows;
 
   const storageRoot = persistentState.storageRoot;
 
@@ -771,6 +806,18 @@ function createFakePluginHostInternal(
   let databaseHandle: Database.Database | undefined;
   const storage: PluginStorage = {
     kv,
+    experimental_forProject(projectId) {
+      assertLive();
+      if (typeof projectId !== "string" || projectId.length === 0) {
+        throw new Error("storage.experimental_forProject expects a project id");
+      }
+      let rows = projectKvRows.get(projectId);
+      if (rows === undefined) {
+        rows = new Map();
+        projectKvRows.set(projectId, rows);
+      }
+      return kvOver(rows);
+    },
     database() {
       assertLive();
       if (!databaseHandle?.open) {
@@ -860,6 +907,109 @@ function createFakePluginHostInternal(
           assertLive();
           settingsListeners.push(
             listener as (typeof settingsListeners)[number],
+          );
+        },
+      };
+    },
+  };
+
+  // --- project settings ---
+  const projectSettingsDescriptors: PluginSettingDescriptors = {};
+  const projectSettingsListeners: Array<
+    (
+      projectId: string,
+      next: Record<string, PluginSettingValue | undefined>,
+      prev: Record<string, PluginSettingValue | undefined>,
+    ) => void
+  > = [];
+  const storedProjectSettings = persistentState.storedProjectSettings;
+
+  function projectSettingsRows(
+    projectId: string,
+  ): Map<string, PluginSettingValue> {
+    let rows = storedProjectSettings.get(projectId);
+    if (rows === undefined) {
+      rows = new Map();
+      storedProjectSettings.set(projectId, rows);
+    }
+    return rows;
+  }
+
+  async function setProjectSettingsValues(
+    projectId: string,
+    values: Record<string, unknown>,
+  ): Promise<void> {
+    const errors = validateSettingsUpdate(projectSettingsDescriptors, values);
+    if (errors.length > 0) {
+      throw new Error(errors.join("; "));
+    }
+    if (typeof projectId !== "string" || projectId.length === 0) {
+      throw new Error("project settings expect a project id");
+    }
+    const rows = projectSettingsRows(projectId);
+    const prev = readSettingsValues(projectSettingsDescriptors, rows);
+    for (const [key, value] of Object.entries(values)) {
+      if (value === null) rows.delete(key);
+      else if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
+        rows.set(key, value);
+      } else {
+        throw new Error(`setting "${key}" has an unsupported value`);
+      }
+    }
+    const next = readSettingsValues(projectSettingsDescriptors, rows);
+    if (JSON.stringify(next) === JSON.stringify(prev)) return;
+    for (const listener of projectSettingsListeners) {
+      try {
+        listener(projectId, next, prev);
+      } catch (error) {
+        emitLog(
+          "warn",
+          `project settings onChange listener failed: ${errorMessage(error)}`,
+        );
+      }
+    }
+  }
+
+  const experimental_projectSettings: ExperimentalPluginProjectSettings = {
+    define(descriptors) {
+      assertLive();
+      const validated = registerProjectSettingDescriptors(
+        projectSettingsDescriptors,
+        descriptors as Record<string, unknown>,
+      );
+      type Values = PluginSettingsValues<typeof descriptors>;
+      return {
+        async get(projectId) {
+          assertLive();
+          return readSettingsValues(
+            validated,
+            storedProjectSettings.get(projectId) ?? new Map(),
+          ) as Values;
+        },
+        async experimental_set(projectId, values) {
+          assertLive();
+          const rawValues: Record<string, unknown> = {};
+          for (const [key, value] of Object.entries(values)) {
+            rawValues[key] = value;
+          }
+          const errors = validateSettingsUpdate(validated, rawValues);
+          if (errors.length > 0) {
+            throw new Error(errors.join("; "));
+          }
+          await setProjectSettingsValues(projectId, rawValues);
+          return readSettingsValues(
+            validated,
+            projectSettingsRows(projectId),
+          ) as Values;
+        },
+        onChange(listener) {
+          assertLive();
+          projectSettingsListeners.push(
+            listener as (typeof projectSettingsListeners)[number],
           );
         },
       };
@@ -1626,6 +1776,7 @@ function createFakePluginHostInternal(
     pluginId,
     log,
     settings,
+    experimental_projectSettings,
     storage,
     http,
     rpc,
@@ -1752,6 +1903,7 @@ function createFakePluginHostInternal(
     sdk: sdkHarness,
     registrations: {
       settingsDescriptors,
+      experimental_projectSettingsDescriptors: projectSettingsDescriptors,
       httpRoutes,
       websocketRoutes,
       get experimental_publishedRpcMethods() {
@@ -1919,6 +2071,10 @@ function createFakePluginHostInternal(
 
     async setSettings(values) {
       await setSettingsValues(values);
+    },
+
+    async experimental_setProjectSettings(projectId, values) {
+      await setProjectSettingsValues(projectId, values);
     },
 
     experimental_watchRpc(method, read) {

@@ -27,6 +27,7 @@ import type {
   PluginWebSocketRouteRecord,
 } from "../services/plugins/plugin-api.js";
 import { PluginSettingsValidationError } from "../services/plugins/plugin-settings.js";
+import { UnknownProjectError } from "../services/plugins/plugin-project-settings.js";
 import { PLUGIN_RPC_CALLER_HEADER } from "../services/plugins/plugin-rpc-caller.js";
 import type { PluginInstallJobs } from "../services/plugins/plugin-install-jobs.js";
 import {
@@ -837,6 +838,56 @@ export function registerPluginRoutes(
     } catch (error) {
       if (error instanceof PluginSettingsValidationError) {
         return context.json({ ok: false, error: error.message }, 400);
+      }
+      throw error;
+    }
+  });
+
+  const NO_PROJECT_SETTINGS = {
+    ok: false as const,
+    error:
+      "unknown plugin, plugin is not running, or plugin defines no project settings (bb.experimental_projectSettings)",
+  };
+
+  app.get("/plugins/:id/projects/:projectId/settings", (context) => {
+    try {
+      const view = plugins.getProjectSettings(
+        context.req.param("id"),
+        context.req.param("projectId"),
+      );
+      if (!view) return context.json(NO_PROJECT_SETTINGS, 404);
+      return context.json({ ok: true, ...view });
+    } catch (error) {
+      if (error instanceof UnknownProjectError) {
+        return context.json({ ok: false, error: error.message }, 404);
+      }
+      throw error;
+    }
+  });
+
+  app.put("/plugins/:id/projects/:projectId/settings", async (context) => {
+    const json: unknown = await context.req.json().catch(() => null);
+    const body = pluginSettingsUpdateRequestSchema.safeParse(json);
+    if (!body.success) {
+      return context.json(
+        { ok: false, error: "expected { values: Record<string, unknown> }" },
+        400,
+      );
+    }
+    try {
+      const view = plugins.updateProjectSettings(
+        context.req.param("id"),
+        context.req.param("projectId"),
+        body.data.values,
+      );
+      if (!view) return context.json(NO_PROJECT_SETTINGS, 404);
+      return context.json({ ok: true, ...view });
+    } catch (error) {
+      if (error instanceof PluginSettingsValidationError) {
+        return context.json({ ok: false, error: error.message }, 400);
+      }
+      if (error instanceof UnknownProjectError) {
+        return context.json({ ok: false, error: error.message }, 404);
       }
       throw error;
     }

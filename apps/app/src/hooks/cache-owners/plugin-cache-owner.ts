@@ -13,6 +13,7 @@ import {
   pluginUpdateJobsQueryKey,
   pluginListQueryKey,
   pluginMarketplacesQueryKey,
+  pluginProjectSettingsViewQueryKey,
   pluginSafeModeQueryKey,
   pluginSettingsViewQueryKey,
 } from "../queries/query-keys";
@@ -24,6 +25,18 @@ export function applyPluginSettingsView(args: {
 }): void {
   args.queryClient.setQueryData(
     pluginSettingsViewQueryKey(args.pluginId),
+    args.view,
+  );
+}
+
+export function applyPluginProjectSettingsView(args: {
+  queryClient: QueryClient;
+  pluginId: string;
+  projectId: string;
+  view: PluginSettingsView;
+}): void {
+  args.queryClient.setQueryData(
+    pluginProjectSettingsViewQueryKey(args.projectId, args.pluginId),
     args.view,
   );
 }

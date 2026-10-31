@@ -10,6 +10,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { createPluginsClient } from "./plugin-client";
 import {
   pluginListQueryKey,
+  pluginProjectSettingsViewQueryKey,
   pluginSafeModeQueryKey,
   pluginSettingsViewQueryKey,
 } from "./query-keys";
@@ -190,6 +191,37 @@ export async function updatePluginSettings(
   return { schema: result.schema, values: result.values };
 }
 
+async function fetchPluginProjectSettingsView(
+  fetchImpl: FetchLike,
+  pluginId: string,
+  projectId: string,
+): Promise<PluginSettingsView | null> {
+  try {
+    const result = await createPluginsClient(fetchImpl).getProjectSettings({
+      pluginId,
+      projectId,
+    });
+    return { schema: result.schema, values: result.values };
+  } catch {
+    return null;
+  }
+}
+
+export async function updatePluginProjectSettings(
+  fetchImpl: FetchLike,
+  pluginId: string,
+  projectId: string,
+  values: Record<string, unknown>,
+): Promise<PluginSettingsView> {
+  const request = pluginSettingsUpdateRequestSchema.parse({ values });
+  const result = await createPluginsClient(fetchImpl).updateProjectSettings({
+    pluginId,
+    projectId,
+    values: request.values,
+  });
+  return { schema: result.schema, values: result.values };
+}
+
 export async function setPluginEnabled(
   fetchImpl: FetchLike,
   pluginId: string,
@@ -271,4 +303,23 @@ export function usePluginSettingsView(
     ...pluginSettingsViewQueryOptions(pluginId),
     enabled: options.enabled,
   });
+}
+
+export function pluginProjectSettingsViewQueryOptions(args: {
+  pluginId: string;
+  projectId: string;
+}) {
+  return queryOptions({
+    queryKey: pluginProjectSettingsViewQueryKey(args.projectId, args.pluginId),
+    queryFn: () =>
+      fetchPluginProjectSettingsView(fetch, args.pluginId, args.projectId),
+    staleTime: 30_000,
+  });
+}
+
+export function usePluginProjectSettingsView(args: {
+  pluginId: string;
+  projectId: string;
+}) {
+  return useQuery(pluginProjectSettingsViewQueryOptions(args));
 }

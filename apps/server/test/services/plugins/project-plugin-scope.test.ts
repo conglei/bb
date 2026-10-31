@@ -22,8 +22,20 @@ import {
 } from "../../../src/services/plugins/project-plugin-scope.js";
 
 const PLUGINS: ProjectScopedPlugin[] = [
-  { pluginId: "git", name: "Git", icon: "GitBranch", projectDefault: "on" },
-  { pluginId: "kept", name: "Kept", icon: null, projectDefault: "off" },
+  {
+    pluginId: "git",
+    name: "Git",
+    icon: "GitBranch",
+    projectDefault: "on",
+    hasProjectSettings: false,
+  },
+  {
+    pluginId: "kept",
+    name: "Kept",
+    icon: null,
+    projectDefault: "off",
+    hasProjectSettings: true,
+  },
 ];
 
 function setup() {
@@ -60,6 +72,7 @@ describe("project plugin scope", () => {
         icon: "GitBranch",
         enabled: true,
         source: "default",
+        hasProjectSettings: false,
       },
       {
         pluginId: "kept",
@@ -67,6 +80,7 @@ describe("project plugin scope", () => {
         icon: null,
         enabled: false,
         source: "default",
+        hasProjectSettings: true,
       },
     ]);
   });

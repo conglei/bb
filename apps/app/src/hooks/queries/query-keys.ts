@@ -75,6 +75,7 @@ export const SKILL_FILES_QUERY_KEY = "skillFiles";
 const PLUGIN_LIST_QUERY_KEY = "plugin-list";
 const PLUGIN_SAFE_MODE_QUERY_KEY = "plugin-safe-mode";
 const PLUGIN_SETTINGS_VIEW_QUERY_KEY = "plugin-settings-view";
+const PLUGIN_PROJECT_SETTINGS_VIEW_QUERY_KEY = "plugin-project-settings-view";
 const PLUGIN_CONTRIBUTIONS_QUERY_KEY = "plugin-contributions";
 const PLUGIN_SDK_SETTINGS_QUERY_KEY = "plugin-settings";
 const PLUGIN_SOURCE_QUERY_KEY = "plugin-source";
@@ -1116,6 +1117,21 @@ export function pluginSettingsViewQueryKey(pluginId: string) {
 
 export function allPluginSettingsViewQueryKeyPrefix() {
   return [PLUGIN_SETTINGS_VIEW_QUERY_KEY] as const;
+}
+
+export function pluginProjectSettingsViewQueryKey(
+  projectId: string,
+  pluginId: string,
+) {
+  return [PLUGIN_PROJECT_SETTINGS_VIEW_QUERY_KEY, projectId, pluginId] as const;
+}
+
+export function projectPluginSettingsViewQueryKeyPrefix(projectId: string) {
+  return [PLUGIN_PROJECT_SETTINGS_VIEW_QUERY_KEY, projectId] as const;
+}
+
+export function allPluginProjectSettingsViewQueryKeyPrefix() {
+  return [PLUGIN_PROJECT_SETTINGS_VIEW_QUERY_KEY] as const;
 }
 
 export function pluginContributionsQueryKey() {

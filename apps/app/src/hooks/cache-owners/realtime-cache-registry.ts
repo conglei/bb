@@ -36,6 +36,7 @@ import {
   allPluginContributionsQueryKeyPrefix,
   allPluginListQueryKeyPrefix,
   allPluginSettingsQueryKeyPrefix,
+  allPluginProjectSettingsViewQueryKeyPrefix,
   allPluginSettingsViewQueryKeyPrefix,
   allPluginSourceQueryKeyPrefix,
   pluginSafeModeQueryKey,
@@ -76,6 +77,7 @@ import { schedulePluginFrontendReconcile } from "../../lib/plugin-frontend-lazy"
 import {
   getProjectListInvalidationQueryKeys,
   getProjectPromptHistoryInvalidationQueryKeys,
+  getPluginProjectSettingsInvalidationQueryKeys,
   getProjectPluginsInvalidationQueryKeys,
   getProjectSourceDependentInvalidationQueryKeys,
   getThreadConversationOutlineInvalidationQueryKeys,
@@ -503,6 +505,9 @@ export const REALTIME_PROJECT_CHANGE_REGISTRY = {
   },
   "project-plugins-changed": {
     dirty: [getProjectPluginsInvalidationQueryKeys],
+  },
+  "plugin-project-settings-changed": {
+    dirty: [getPluginProjectSettingsInvalidationQueryKeys],
   },
   "threads-changed": {
     dirty: [
@@ -1233,6 +1238,7 @@ function dirtyPluginManagementQueries(): QueryKey[] {
   return [
     allPluginListQueryKeyPrefix(),
     allPluginSettingsViewQueryKeyPrefix(),
+    allPluginProjectSettingsViewQueryKeyPrefix(),
     allPluginSettingsQueryKeyPrefix(),
     allPluginSourceQueryKeyPrefix(),
     allPluginCatalogSearchQueryKeyPrefix(),

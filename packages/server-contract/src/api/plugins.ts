@@ -242,6 +242,12 @@ export const installedPluginSchema = z.object({
   capabilities: pluginCapabilitySummarySchema.default([]),
   hasSettings: z.boolean(),
   /**
+   * Whether the plugin defined `bb.experimental_projectSettings`; its values
+   * live at `/plugins/:id/projects/:projectId/settings`. Older servers omit
+   * it.
+   */
+  hasProjectSettings: z.boolean().default(false),
+  /**
    * The manifest's `bb.experimental_projectDefault`: whether a project with
    * no stored override runs this plugin. Older servers omit it, so a reader
    * falls back to "on", which is what every plugin had before the field.

@@ -2411,9 +2411,79 @@ Docs: `frontend-core-slots.md`.
 5. **Split panes.** A project page is a `project-view` pane; switching tabs
    replaces the pane content in place. Audit focus, back/forward, and
    persistence across reloads.
-6. **Project scope for data.** Decide whether `bb.storage` and plugin
-   settings grow a per-project variant so views can keep per-project state
-   without inventing their own keying.
+6. **Project scope for data.** Landed: `bb.experimental_projectSettings`
+   and `bb.storage.experimental_forProject(projectId)` (see those entries)
+   keep per-project settings and kv rows keyed by the project, so a view
+   reads its project's state with the `projectId` it receives. Audit the
+   two together with this slot before any of them stabilizes.
+
+## `bb.experimental_projectSettings` (`@get-bb/plugin-sdk`)
+
+`bb.experimental_projectSettings.define(descriptors)` declares settings whose
+values are stored once per project in `plugin_project_settings` (PK pluginId,
+projectId, key; cascades on project delete). The handle's `get(projectId)`,
+`experimental_set(projectId, values)` and `onChange((projectId, next, prev) =>
+…)` mirror `bb.settings`, and the same descriptor types, key rules,
+`experimental_schema` validation and `null`-unsets apply. `define` refuses a
+`secret: true` descriptor: per-project values are bb.db rows, never secret
+files, so a per-project secret would need a new storage path. Keys share the
+plugin's project-settings namespace, separate from `bb.settings`. Writes to an
+unknown project throw. Every write path (`experimental_set`, `PUT
+/plugins/:id/projects/:projectId/settings`, `sdk.plugins.updateProjectSettings`,
+`bb plugin config <id> --project <projectId> set|unset`, the project settings
+"Plugins" section form) goes through
+`apps/server/src/services/plugins/plugin-project-settings.ts`, fires `onChange`
+only when the project's effective values changed, and then publishes
+`plugin-project-settings-changed` on the project. `InstalledPlugin.hasProjectSettings`
+and `ProjectPluginEntry.hasProjectSettings` tell clients the form exists.
+Plugin removal deletes every project's rows. Core has no caller yet; the Kept
+plugin is the first consumer.
+
+Docs: `backend-foundation.md`, `testing.md` (fake host
+`experimental_setProjectSettings`).
+
+**Audit before stabilizing.**
+
+1. **Secrets.** Decide whether per-project secrets are needed (per-project
+   secret files under `<dataDir>/plugins/<id>/secrets/<projectId>/`) or stay
+   refused.
+2. **Project scope of the form.** The form shows under a plugin row only when
+   the plugin is on for the project; confirm values of a plugin turned off
+   later should stay stored (today they do) and whether `get()` for such a
+   project should still return them.
+3. **Plugin-wide fallback.** Decide whether a project value should fall back
+   to the plugin-wide `bb.settings` value of a same-named key, or whether the
+   two namespaces stay independent (today they are independent).
+4. **Cross-project reads.** There is no "list projects with stored values";
+   decide whether `onChange` and a listing are enough for plugins that react
+   to project creation.
+
+## `bb.storage.experimental_forProject(projectId)` (`@get-bb/plugin-sdk`)
+
+Returns a `PluginKvStorage` over `plugin_project_kv` rows scoped to one project
+(PK pluginId, projectId, key; cascades on project delete). Same contract as
+`bb.storage.kv` including the 256 KB value cap; keys are independent per
+project and invisible to `kv` and to other projects. The handle is cheap and
+stateless; writes to an unknown project throw. Plugin removal deletes the
+plugin's `plugin_project_kv` rows — unlike plain `plugin_kv`, which removal
+still leaves in place (existing behavior, kept deliberately). The table is new,
+so nothing depends on rows outliving the plugin. Core has no caller yet; the
+Kept plugin is the first consumer. The fake host keeps the rows in
+process-local maps keyed by project id and preserves them across
+`lifecycle.reload`.
+
+Docs: `backend-foundation.md`.
+
+**Audit before stabilizing.**
+
+1. **Removal symmetry.** Decide whether plain `plugin_kv` should follow and be
+   deleted on removal too, so the two stores behave alike.
+2. **Database scoping.** `bb.storage.database()` has no per-project variant;
+   decide whether one is needed or whether plugins key their own tables by
+   project id.
+3. **Project lifecycle events.** Rows vanish with the project without the
+   plugin hearing about it; decide whether a `project.deleted` plugin event
+   should accompany the cascade.
 
 ## Manifest `bb.experimental_projectDefault`
 

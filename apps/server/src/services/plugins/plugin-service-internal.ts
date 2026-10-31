@@ -87,6 +87,14 @@ export interface PluginServiceDeps {
   aiServices: AiServiceRegistry;
   onSettingsChanged?: (pluginId: string) => void;
   /**
+   * Fired after one project's effective values for a plugin's
+   * `experimental_projectSettings` changed through any write path.
+   */
+  onProjectSettingsChanged?: (args: {
+    pluginId: string;
+    projectId: string;
+  }) => void;
+  /**
    * Fired after a plugin stops being a registered owner — disabled or
    * uninstalled, but *not* reloaded. Core state keyed by `plugin:<id>` (queue
    * rows waiting on it) is cleared here instead of waiting for a sweep.

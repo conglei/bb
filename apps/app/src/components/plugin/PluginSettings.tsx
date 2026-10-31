@@ -31,6 +31,7 @@ import {
   usePluginSettingsView,
   type PluginListItem,
   type PluginSettingFieldDescriptor,
+  type PluginSettingsView,
 } from "@/hooks/queries/plugin-settings-queries";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { usePluginSlots } from "@/lib/plugin-slots";
@@ -294,20 +295,28 @@ function initialSettingDraft(
   return typeof storedValue === "string" ? storedValue : "";
 }
 
-interface AutosavingPluginSettingProps {
+export type PluginSettingSaveValue = string | number | boolean | null;
+
+export interface AutosavingPluginSettingProps {
   descriptor: PluginSettingFieldDescriptor;
-  pluginId: string;
+  /** Serializes concurrent saves of one field; unique per field and scope. */
+  mutationScopeId: string;
   settingKey: string;
   storedValue: unknown;
+  saveValue: (
+    values: Record<string, PluginSettingSaveValue>,
+  ) => Promise<PluginSettingsView>;
+  onSaved: (view: PluginSettingsView) => void;
 }
 
-function AutosavingPluginSetting({
+export function AutosavingPluginSetting({
   descriptor,
-  pluginId,
+  mutationScopeId,
   settingKey,
   storedValue,
+  saveValue,
+  onSaved,
 }: AutosavingPluginSettingProps) {
-  const queryClient = useQueryClient();
   const messageId = useId();
   const initialDraft = initialSettingDraft(descriptor, storedValue);
   const [draftState, setDraftState] = useState({
@@ -316,11 +325,11 @@ function AutosavingPluginSetting({
   });
   const draft = draftState.value;
   const save = useMutation({
-    scope: { id: `plugin-setting:${pluginId}:${settingKey}` },
+    scope: { id: mutationScopeId },
     mutationFn: (value: string | boolean | typeof INVALID_NUMBER_DRAFT) => {
       if (value === INVALID_NUMBER_DRAFT)
         throw new Error("Enter a finite number");
-      let settingValue: string | number | boolean | null = value;
+      let settingValue: PluginSettingSaveValue = value;
       if (descriptor.type === "number") {
         const trimmed = typeof value === "string" ? value.trim() : "";
         const parsed = Number(trimmed);
@@ -329,14 +338,9 @@ function AutosavingPluginSetting({
         }
         settingValue = trimmed.length === 0 ? null : parsed;
       }
-      return updatePluginSettings(fetch, pluginId, {
-        [settingKey]: settingValue,
-      });
+      return saveValue({ [settingKey]: settingValue });
     },
-    onSuccess: (view) => {
-      applyPluginSettingsView({ queryClient, pluginId, view });
-      void invalidateMachineProviders({ queryClient });
-    },
+    onSuccess: onSaved,
   });
 
   useEffect(() => {
@@ -436,6 +440,7 @@ function AutosavingPluginSetting({
 }
 
 export function PluginSettingsForm({ pluginId }: { pluginId: string }) {
+  const queryClient = useQueryClient();
   const viewQuery = usePluginSettingsView(pluginId, { enabled: true });
   const view = viewQuery.data ?? null;
   if (view === null || Object.keys(view.schema).length === 0) return null;
@@ -446,9 +451,14 @@ export function PluginSettingsForm({ pluginId }: { pluginId: string }) {
         <AutosavingPluginSetting
           key={key}
           descriptor={descriptor}
-          pluginId={pluginId}
+          mutationScopeId={`plugin-setting:${pluginId}:${key}`}
           settingKey={key}
           storedValue={view.values[key]}
+          saveValue={(values) => updatePluginSettings(fetch, pluginId, values)}
+          onSaved={(saved) => {
+            applyPluginSettingsView({ queryClient, pluginId, view: saved });
+            void invalidateMachineProviders({ queryClient });
+          }}
         />
       ))}
     </div>

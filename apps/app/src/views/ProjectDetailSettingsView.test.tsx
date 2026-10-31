@@ -401,6 +401,7 @@ describe("ProjectDetailSettingsView", () => {
         icon: "GitBranch",
         enabled: true,
         source: "default",
+        hasProjectSettings: false,
       },
       {
         pluginId: "kept",
@@ -408,6 +409,7 @@ describe("ProjectDetailSettingsView", () => {
         icon: null,
         enabled: false,
         source: "default",
+        hasProjectSettings: false,
       },
     ];
     const overridden: ProjectPluginEntry[] = [

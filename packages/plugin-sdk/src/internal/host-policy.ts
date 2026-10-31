@@ -330,6 +330,25 @@ export function registerSettingDescriptors(
   return validated;
 }
 
+export function registerProjectSettingDescriptors(
+  target: PluginSettingDescriptors,
+  added: Record<string, unknown>,
+): PluginSettingDescriptors {
+  for (const [key, raw] of Object.entries(added)) {
+    if (
+      typeof raw === "object" &&
+      raw !== null &&
+      "secret" in raw &&
+      raw.secret === true
+    ) {
+      throw new Error(
+        `project setting "${key}" cannot be secret: per-project settings are stored in bb.db rows, not secret files. Define secrets with bb.settings instead.`,
+      );
+    }
+  }
+  return registerSettingDescriptors(target, added);
+}
+
 function settingSchemaError<T extends string | number | boolean>(
   key: string,
   schema: StandardSchemaV1<T, T> | undefined,
@@ -2833,10 +2852,9 @@ export function runPluginStorageMigrations(
     database.exec("ALTER TABLE _bb_migrations ADD COLUMN statement_hash TEXT");
   }
   const rows = database
-    .prepare<
-      [],
-      { id: number; statement_hash: string | null }
-    >("SELECT id, statement_hash FROM _bb_migrations ORDER BY id")
+    .prepare<[], { id: number; statement_hash: string | null }>(
+      "SELECT id, statement_hash FROM _bb_migrations ORDER BY id",
+    )
     .all();
   const applied = new Map<number, string | null>();
   for (const row of rows) applied.set(row.id, row.statement_hash);

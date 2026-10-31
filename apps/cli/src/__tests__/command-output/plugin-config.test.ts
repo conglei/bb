@@ -113,6 +113,51 @@ describe("bb plugin config", () => {
     );
   });
 
+  it("targets a project's settings with --project", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(settingsResponse(3))
+      .mockResolvedValueOnce(settingsResponse(2));
+
+    await runCommand(
+      [
+        "plugin",
+        "config",
+        "demo",
+        "--project",
+        "proj_1",
+        "set",
+        "retries",
+        "2",
+      ],
+      register,
+    );
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      "http://server/api/v1/plugins/demo/projects/proj_1/settings",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "http://server/api/v1/plugins/demo/projects/proj_1/settings",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ values: { retries: 2 } }),
+      }),
+    );
+
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValueOnce(settingsResponse(2));
+    await runCommand(
+      ["plugin", "config", "demo", "--project", "proj_1"],
+      register,
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "http://server/api/v1/plugins/demo/projects/proj_1/settings",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("rejects a non-finite number before sending an update", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(settingsResponse(3));
 

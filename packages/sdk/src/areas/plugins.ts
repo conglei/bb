@@ -168,6 +168,16 @@ export interface PluginSettingsUpdateArgs extends PluginIdArgs {
   values: Record<string, JsonValue>;
 }
 
+export interface PluginProjectSettingsArgs extends PluginIdArgs {
+  projectId: string;
+  signal?: AbortSignal;
+}
+
+export interface PluginProjectSettingsUpdateArgs extends PluginIdArgs {
+  projectId: string;
+  values: Record<string, JsonValue>;
+}
+
 export interface PluginTokenArgs extends PluginIdArgs {
   rotate?: boolean;
 }
@@ -239,6 +249,8 @@ export type PluginSetSafeModeResult = PluginSafeModeUpdateResponse;
 export type PluginPruneCacheResult = PluginCachePruneResponse;
 export type PluginTokenResult = PluginTokenResponse;
 export type PluginUpdateSettingsResult = PluginSettingsResponse;
+export type PluginGetProjectSettingsResult = PluginSettingsResponse;
+export type PluginUpdateProjectSettingsResult = PluginSettingsResponse;
 export type PluginGetSourceResult = PluginSourceDetail;
 export type PluginCheckUpdatesResult = PluginUpdateCheckEntry[];
 export type PluginApplyUpdateResult = PluginApplyUpdateContract;
@@ -312,6 +324,14 @@ export interface PluginsArea {
   disable(args: PluginIdArgs): Promise<PluginDisableResult>;
   enable(args: PluginIdArgs): Promise<PluginEnableResult>;
   getSettings(args: PluginGetSettingsArgs): Promise<PluginGetSettingsResult>;
+  /**
+   * The plugin's `bb.experimental_projectSettings` schema and one project's
+   * values. Rejects (404) when the plugin is not running, defined no project
+   * settings, or the project does not exist.
+   */
+  getProjectSettings(
+    args: PluginProjectSettingsArgs,
+  ): Promise<PluginGetProjectSettingsResult>;
   getSource(args: PluginGetSourceArgs): Promise<PluginGetSourceResult>;
   install(args: PluginInstallArgs): Promise<PluginInstallResult>;
   startInstall(args: PluginInstallArgs): Promise<PluginInstallJob>;
@@ -326,6 +346,10 @@ export interface PluginsArea {
   updateSettings(
     args: PluginSettingsUpdateArgs,
   ): Promise<PluginUpdateSettingsResult>;
+  /** Validate and store one project's values; `null` unsets a value. */
+  updateProjectSettings(
+    args: PluginProjectSettingsUpdateArgs,
+  ): Promise<PluginUpdateProjectSettingsResult>;
 }
 
 function pluginSourceSelection(
@@ -341,6 +365,11 @@ function pluginSourceSelection(
 function pluginPath(pluginId: string, suffix = ""): string {
   const id = z.string().min(1).parse(pluginId);
   return `/api/v1/plugins/${encodeURIComponent(id)}${suffix}`;
+}
+
+function projectSettingsSuffix(projectId: string): string {
+  const id = z.string().min(1).parse(projectId);
+  return `/projects/${encodeURIComponent(id)}/settings`;
 }
 
 export function createPluginsArea(args: CreateSdkAreaArgs): PluginsArea {
@@ -683,6 +712,13 @@ export function createPluginsArea(args: CreateSdkAreaArgs): PluginsArea {
         { signal: input.signal },
       );
     },
+    async getProjectSettings(input) {
+      return requestParsed(
+        pluginPath(input.pluginId, projectSettingsSuffix(input.projectId)),
+        pluginSettingsResponseSchema,
+        { signal: input.signal },
+      );
+    },
     async getSource(input) {
       return requestParsed(
         pluginPath(input.pluginId, "/source"),
@@ -746,6 +782,16 @@ export function createPluginsArea(args: CreateSdkAreaArgs): PluginsArea {
       });
       return requestParsed(
         pluginPath(input.pluginId, "/settings"),
+        pluginSettingsResponseSchema,
+        jsonInit("PUT", body),
+      );
+    },
+    async updateProjectSettings(input) {
+      const body = pluginSettingsUpdateRequestSchema.parse({
+        values: input.values,
+      });
+      return requestParsed(
+        pluginPath(input.pluginId, projectSettingsSuffix(input.projectId)),
         pluginSettingsResponseSchema,
         jsonInit("PUT", body),
       );

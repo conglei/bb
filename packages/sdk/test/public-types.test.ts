@@ -298,6 +298,7 @@ type ExpectedPluginsKey =
   | "disable"
   | "enable"
   | "getSettings"
+  | "getProjectSettings"
   | "getSource"
   | "install"
   | "installJobs"
@@ -308,7 +309,8 @@ type ExpectedPluginsKey =
   | "remove"
   | "startInstall"
   | "token"
-  | "updateSettings";
+  | "updateSettings"
+  | "updateProjectSettings";
 
 type ExpectedPluginCatalogKey =
   | "install"

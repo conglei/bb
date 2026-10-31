@@ -11,6 +11,7 @@ import {
   hostPathExistenceQueryKey,
   hostsQueryKey,
   projectPathsQueryKey,
+  pluginProjectSettingsViewQueryKey,
   projectPluginsQueryKey,
   projectCommandsQueryKey,
   projectFilePreviewQueryKey,
@@ -2935,6 +2936,37 @@ describe("createRealtimeCacheEffects", () => {
 
     expect(queryClient.getQueryState(firstKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(secondKey)?.isInvalidated).not.toBe(true);
+
+    effects.dispose();
+  });
+
+  it("invalidates only the changed project's plugin project-settings views on plugin-project-settings-changed", () => {
+    const { effects, queryClient } = createRealtimeEffectsTestContext();
+    const keptKey = pluginProjectSettingsViewQueryKey("project-1", "kept");
+    const notesKey = pluginProjectSettingsViewQueryKey("project-1", "notes");
+    const otherProjectKey = pluginProjectSettingsViewQueryKey(
+      "project-2",
+      "kept",
+    );
+    const pluginsKey = projectPluginsQueryKey("project-1");
+    for (const key of [keptKey, notesKey, otherProjectKey]) {
+      queryClient.setQueryData(key, { schema: {}, values: {} });
+    }
+    queryClient.setQueryData(pluginsKey, []);
+
+    effects.handleChanged({
+      type: "changed",
+      entity: "project",
+      id: "project-1",
+      changes: ["plugin-project-settings-changed"],
+    });
+
+    expect(queryClient.getQueryState(keptKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(notesKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(otherProjectKey)?.isInvalidated).not.toBe(
+      true,
+    );
+    expect(queryClient.getQueryState(pluginsKey)?.isInvalidated).not.toBe(true);
 
     effects.dispose();
   });
