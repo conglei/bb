@@ -11,6 +11,7 @@ import {
   markProjectDeleted,
   reorderProject,
   setProjectGitRemoteUrlIfMissing,
+  updateProject,
 } from "../../src/data/projects.js";
 import { upsertHost } from "../../src/data/hosts.js";
 import { createMigratedConnection } from "../../src/testing.js";
@@ -106,6 +107,31 @@ describe("projects", () => {
     expect(getProject(db, project.id)?.gitRemoteUrl).toBe(
       "ssh://git.example.test/first.git",
     );
+  });
+
+  it("stores a project icon and clears it with null", () => {
+    const { db, host } = setup();
+    const { project } = createProject(db, noopNotifier, {
+      name: "iconed-project",
+      source: {
+        type: "local_path",
+        hostId: host.id,
+        path: "/tmp/iconed-project",
+      },
+    });
+
+    expect(project.icon).toBeNull();
+    expect(
+      updateProject(db, noopNotifier, project.id, { icon: "Beaker" })?.icon,
+    ).toBe("Beaker");
+    expect(getProject(db, project.id)?.icon).toBe("Beaker");
+    expect(
+      updateProject(db, noopNotifier, project.id, { name: "renamed" }),
+    ).toMatchObject({ name: "renamed", icon: "Beaker" });
+    expect(
+      updateProject(db, noopNotifier, project.id, { icon: null })?.icon,
+    ).toBeNull();
+    expect(getProject(db, project.id)?.icon).toBeNull();
   });
 
   it("ensures the singleton personal project idempotently", () => {

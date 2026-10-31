@@ -123,6 +123,7 @@ function toProjectResponseProjectFields(
     id: project.id,
     kind: project.kind,
     name: project.name,
+    icon: project.icon,
     gitRemoteUrl: project.gitRemoteUrl,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,

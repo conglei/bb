@@ -64,6 +64,7 @@ const remoteHost = host({
 interface SidebarProjectFixture {
   id: string;
   name: string;
+  icon: string | null;
   gitRemoteUrl: string | null;
   hostIds: string[];
   threadCount: number;
@@ -83,6 +84,7 @@ function stubSidebarBootstrapFetch(
             id: project.id,
             kind: "standard",
             name: project.name,
+            icon: project.icon,
             gitRemoteUrl: project.gitRemoteUrl,
             createdAt: NOW,
             updatedAt: NOW,
@@ -106,6 +108,7 @@ function stubSidebarBootstrapFetch(
             id: "proj_personal",
             kind: "personal",
             name: "Personal",
+            icon: null,
             gitRemoteUrl: null,
             createdAt: NOW,
             updatedAt: NOW,
@@ -124,6 +127,7 @@ const projects: SidebarProjectFixture[] = [
   {
     id: "proj_bb",
     name: "bb",
+    icon: null,
     gitRemoteUrl: "git@github.com:get-bb/bb.git",
     hostIds: ["host_primary", "host_remote"],
     threadCount: 3,
@@ -131,6 +135,7 @@ const projects: SidebarProjectFixture[] = [
   {
     id: "proj_pierre",
     name: "pierre",
+    icon: null,
     gitRemoteUrl: "https://github.com/get-bb/pierre.git",
     hostIds: ["host_remote"],
     threadCount: 1,
@@ -138,6 +143,7 @@ const projects: SidebarProjectFixture[] = [
   {
     id: "proj_ingest",
     name: "ingest",
+    icon: null,
     gitRemoteUrl: null,
     hostIds: [],
     threadCount: 0,
@@ -192,6 +198,7 @@ it("counts only persistent checkouts and their connection status in project summ
     {
       id: "proj_all",
       name: "All checkouts",
+      icon: null,
       gitRemoteUrl: null,
       hostIds: [primaryHost.id, remoteHost.id, sandbox.id],
       threadCount: 1,
@@ -199,6 +206,7 @@ it("counts only persistent checkouts and their connection status in project summ
     {
       id: "proj_offline",
       name: "Offline checkout",
+      icon: null,
       gitRemoteUrl: null,
       hostIds: [remoteHost.id, sandbox.id],
       threadCount: 1,
@@ -331,6 +339,7 @@ describe("ProjectsSettingsSection", () => {
       id: "proj_bb",
       kind: "standard",
       name: "bb-next",
+      icon: null,
       gitRemoteUrl: null,
       createdAt: NOW,
       updatedAt: NOW,

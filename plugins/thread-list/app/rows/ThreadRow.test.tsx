@@ -1073,6 +1073,7 @@ describe("ThreadRow", () => {
         {
           id: "proj_other",
           name: "Web App",
+          icon: null,
           isPersonal: false,
           href: "/projects/proj_other",
           settingsHref: "/projects/proj_other/settings",
@@ -1271,7 +1272,9 @@ describe("ThreadRow", () => {
 
   it("draws other plugins' metadata only while Metadata is on", () => {
     const slot = renderThreadRow({ experiments: ["threadRowMetadata"] });
-    expect(slot.container.querySelector("[data-thread-row-metadata]")).toBeNull();
+    expect(
+      slot.container.querySelector("[data-thread-row-metadata]"),
+    ).toBeNull();
 
     act(() => getDefaultStore().set(sidebarShowRowMetadataAtom, true));
     expect(
@@ -1282,7 +1285,9 @@ describe("ThreadRow", () => {
   it("ignores the Metadata preference while its experiment is off", () => {
     getDefaultStore().set(sidebarShowRowMetadataAtom, true);
     const slot = renderThreadRow();
-    expect(slot.container.querySelector("[data-thread-row-metadata]")).toBeNull();
+    expect(
+      slot.container.querySelector("[data-thread-row-metadata]"),
+    ).toBeNull();
   });
 
   it("routes a click on other plugins' metadata like the rest of the row", () => {
@@ -1440,7 +1445,8 @@ describe("ThreadRow", () => {
     renderThreadRow({
       thread: createThread({
         activity: activity({ workflows: 1 }),
-        lastReadAt: 1, latestAttentionAt: 1,
+        lastReadAt: 1,
+        latestAttentionAt: 1,
       }),
     });
 
@@ -1464,7 +1470,8 @@ describe("ThreadRow", () => {
       renderThreadRow({
         thread: createThread({
           activity: activity({ [activityKey]: 1 }),
-          lastReadAt: 1, latestAttentionAt: 1,
+          lastReadAt: 1,
+          latestAttentionAt: 1,
         }),
       });
 
@@ -1480,7 +1487,8 @@ describe("ThreadRow", () => {
           backgroundAgents: 1,
           backgroundCommands: 1,
         }),
-        lastReadAt: 1, latestAttentionAt: 1,
+        lastReadAt: 1,
+        latestAttentionAt: 1,
       }),
     });
 
@@ -1491,7 +1499,8 @@ describe("ThreadRow", () => {
     renderThreadRow({
       thread: createThread({
         activity: activity({ backgroundAgents: 1, backgroundCommands: 1 }),
-        lastReadAt: 1, latestAttentionAt: 1,
+        lastReadAt: 1,
+        latestAttentionAt: 1,
       }),
     });
 

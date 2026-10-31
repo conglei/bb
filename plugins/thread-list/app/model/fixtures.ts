@@ -109,6 +109,7 @@ export function makePluginProject(
   return {
     id,
     name: "Test project",
+    icon: null,
     isPersonal: false,
     href: `/projects/${id}`,
     settingsHref: `/settings/projects/${id}`,

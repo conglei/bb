@@ -12,6 +12,7 @@ describe("buildSidebarData", () => {
       {
         id: "proj_a",
         name: "A",
+        icon: null,
         isPersonal: false,
         href: "/projects/proj_a",
         settingsHref: "/projects/proj_a/settings",
@@ -19,6 +20,7 @@ describe("buildSidebarData", () => {
       {
         id: "proj_me",
         name: "Personal",
+        icon: null,
         isPersonal: true,
         href: "/projects/proj_me",
         settingsHref: "/projects/proj_me/settings",
@@ -83,6 +85,7 @@ describe("buildSidebarData structural sharing", () => {
     {
       id: "proj_a",
       name: "A",
+      icon: null,
       isPersonal: false,
       href: "/a",
       settingsHref: "/a/s",
@@ -90,6 +93,7 @@ describe("buildSidebarData structural sharing", () => {
     {
       id: "proj_b",
       name: "B",
+      icon: null,
       isPersonal: false,
       href: "/b",
       settingsHref: "/b/s",

@@ -186,6 +186,7 @@ export function useSidebarThreads(
       projects: allProjects.map((project) => ({
         id: project.id,
         name: project.name,
+        icon: project.icon,
         isPersonal: project.id === PERSONAL_PROJECT_ID,
         href: getProjectComposeRoutePath(project.id),
         settingsHref: getSettingsProjectRoutePath(project.id),

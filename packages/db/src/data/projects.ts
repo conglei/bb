@@ -270,6 +270,7 @@ export function ensurePersonalProject(db: DbConnection) {
 
 export interface UpdateProjectInput {
   name?: string;
+  icon?: string | null;
 }
 
 export function setProjectGitRemoteUrlIfMissing(

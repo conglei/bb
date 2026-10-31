@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectPluginEntry } from "@bb/server-contract";
 import {
+  buildProjectUpdateRequest,
+  formatProjectIcon,
   formatProjectPluginOwner,
   formatProjectPluginStateLine,
 } from "./project.js";
@@ -104,5 +106,34 @@ describe("project plugins output", () => {
         previousOwner: null,
       }),
     ).toBe("Plugin git override cleared for project proj_a");
+  });
+});
+
+describe("project update flags", () => {
+  it("maps --name, --icon, and --clear-icon onto the update request", () => {
+    expect(buildProjectUpdateRequest({ name: "Kept" })).toEqual({
+      name: "Kept",
+    });
+    expect(buildProjectUpdateRequest({ icon: "Beaker" })).toEqual({
+      icon: "Beaker",
+    });
+    expect(buildProjectUpdateRequest({ clearIcon: true })).toEqual({
+      icon: null,
+    });
+    expect(
+      buildProjectUpdateRequest({ name: "Kept", clearIcon: true }),
+    ).toEqual({ name: "Kept", icon: null });
+  });
+
+  it("refuses an empty update and conflicting icon flags", () => {
+    expect(() => buildProjectUpdateRequest({})).toThrow(/No changes requested/);
+    expect(() =>
+      buildProjectUpdateRequest({ icon: "Beaker", clearIcon: true }),
+    ).toThrow(/either --icon or --clear-icon/);
+  });
+
+  it("prints the default marker when no icon is set", () => {
+    expect(formatProjectIcon(null)).toBe("default");
+    expect(formatProjectIcon("Beaker")).toBe("Beaker");
   });
 });

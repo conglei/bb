@@ -4,6 +4,7 @@ import {
   getProjectPathValidationMessage,
   normalizeProjectPathInput,
   projectExecutionDefaultsSchema,
+  projectIconNameSchema,
   projectSchema,
   projectSourceSchema,
   promptHistoryEntrySchema,
@@ -274,10 +275,11 @@ export type ProjectAttachmentUploadForm = Record<"file", Blob>;
 export const updateProjectRequestSchema = z
   .object({
     name: z.string().min(1),
+    icon: projectIconNameSchema.nullable(),
   })
   .partial()
   .refine(
-    (value) => value.name !== undefined,
+    (value) => value.name !== undefined || value.icon !== undefined,
     "At least one field must be provided",
   );
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequestSchema>;

@@ -13,6 +13,7 @@ import type { SidebarThread } from "./sidebar-thread.js";
 export interface SidebarProject {
   id: string;
   name: string;
+  icon: string | null;
   href: string;
   settingsHref: string;
   isPersonal: boolean;
@@ -59,6 +60,7 @@ function sameProjectShape(
   return (
     previous.id === project.id &&
     previous.name === project.name &&
+    previous.icon === project.icon &&
     previous.href === project.href &&
     previous.settingsHref === project.settingsHref &&
     previous.isPersonal === project.isPersonal
@@ -105,6 +107,7 @@ export function buildSidebarData(
     return {
       id: project.id,
       name: project.name,
+      icon: project.icon,
       href: project.href,
       settingsHref: project.settingsHref,
       isPersonal: project.isPersonal,

@@ -75,10 +75,10 @@ the most-parsed commands ends with the same shape.
     bare arrays
 
   bb project list --json
-    [{id, kind, name, gitRemoteUrl, sources: [{id, hostId, path, isDefault}]}]    (bare array)
+    [{id, kind, name, icon, gitRemoteUrl, sources: [{id, hostId, path, isDefault}]}]    (bare array)
 
   bb project show <id> --json
-    {id, kind, name, gitRemoteUrl, sources}
+    {id, kind, name, icon, gitRemoteUrl, sources}
 
   bb project plugins list <id> --json
     [{pluginId, name, icon, enabled, source: "project" | "default", hasProjectSettings, scope: "any" | "single", ownerProjectId, ownerProjectName}]    (bare array)

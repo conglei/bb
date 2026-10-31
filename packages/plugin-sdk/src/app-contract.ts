@@ -1021,7 +1021,9 @@ export interface ExperimentalProjectViewRegistration {
    * the plugin's scope with the project whose page is open. A hook that throws
    * or returns an invalid badge shows no badge.
    */
-  experimental_useBadge?: (props: { projectId: string }) => ExperimentalBadge | null;
+  experimental_useBadge?: (props: {
+    projectId: string;
+  }) => ExperimentalBadge | null;
 }
 
 /**
@@ -1461,6 +1463,12 @@ export interface PluginSidebarThread {
 export interface PluginSidebarProject {
   id: string;
   name: string;
+  /**
+   * The bb icon name the user picked for the project, or null for the default
+   * folder glyph. Render it with `experimental_Icon` and a `FolderGit`
+   * fallback.
+   */
+  icon: string | null;
   /** True for the implicit personal project. */
   isPersonal: boolean;
   /** The app-relative URL of the project's compose screen. */

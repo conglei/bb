@@ -28,11 +28,15 @@ A project maps to a code repository. All threads belong to a project.
   local CLI machine fallback (normally the server machine).
 
   bb project show <id>                    Show project details
-    Accepts proj_personal to inspect Personal.
+    Accepts proj_personal to inspect Personal. Prints the icon name, or
+    "default" when none is set.
   bb project open <id>                    Print the URL of the project's page
     --view <pluginId.viewId>              Open a plugin's view (default: core.threads)
   bb project update <id>                  Update a project
     --name <name>                         New name
+    --icon <name>                         Set the icon shown beside the project
+                                          (a bb icon name such as Beaker)
+    --clear-icon                          Return to the default folder icon
 
   bb project delete <id>                  Delete project and all threads
     --yes                                 Skip confirmation

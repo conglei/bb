@@ -6,10 +6,23 @@ const projectKindValues = ["standard", "personal"] as const;
 const projectKindSchema = z.enum(projectKindValues);
 export type ProjectKind = z.infer<typeof projectKindSchema>;
 
+export const PROJECT_ICON_NAME_PATTERN = /^[A-Za-z0-9]+$/;
+export const PROJECT_ICON_NAME_MAX_LENGTH = 64;
+
+export const projectIconNameSchema = z
+  .string()
+  .min(1)
+  .max(PROJECT_ICON_NAME_MAX_LENGTH)
+  .regex(
+    PROJECT_ICON_NAME_PATTERN,
+    "Project icon must be a bb icon name (letters and digits only)",
+  );
+
 export const projectSchema = z.object({
   id: z.string(),
   kind: projectKindSchema,
   name: z.string(),
+  icon: projectIconNameSchema.nullable(),
   gitRemoteUrl: z.string().nullable(),
   createdAt: z.number(),
   updatedAt: z.number(),

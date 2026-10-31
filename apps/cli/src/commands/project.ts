@@ -6,6 +6,7 @@ import type {
   HostDiscoveredRepo,
   ProjectPluginEntry,
   ProjectResponse,
+  UpdateProjectRequest,
   UpdateProjectSourceRequest,
 } from "@bb/server-contract";
 import { getProjectViewRoutePath } from "@bb/client-core";
@@ -85,6 +86,8 @@ function addProjectWorkspaceRoutingOptions(command: Command): Command {
 
 interface ProjectUpdateCommandOptions {
   name?: string;
+  icon?: string;
+  clearIcon?: boolean;
   json?: boolean;
 }
 
@@ -591,16 +594,16 @@ export function registerProjectCommands(
     .command("update <id>")
     .description("Update a project")
     .option("--name <name>", "Set the project name")
+    .option("--icon <name>", "Set the project icon to a bb icon name")
+    .option("--clear-icon", "Remove the project icon")
     .option("--json", "Print machine-readable JSON output")
     .action(
       action(async (id: string, opts: ProjectUpdateCommandOptions) => {
-        if (!opts.name) {
-          throw new Error("No changes requested. Provide --name.");
-        }
+        const request = buildProjectUpdateRequest(opts);
         const sdk = createCliBbSdk(getUrl());
         const updated = await sdk.projects.update({
           projectId: id,
-          name: opts.name,
+          ...request,
         });
         if (outputJson(opts, updated)) return;
         console.log(`Project ${updated.id} updated`);
@@ -876,10 +879,35 @@ function printProjectPluginTable(entries: ProjectPluginEntry[]): void {
   );
 }
 
+export function buildProjectUpdateRequest(opts: {
+  name?: string;
+  icon?: string;
+  clearIcon?: boolean;
+}): UpdateProjectRequest {
+  if (opts.icon !== undefined && opts.clearIcon) {
+    throw new Error("Provide either --icon or --clear-icon, not both.");
+  }
+  const request: UpdateProjectRequest = {};
+  if (opts.name !== undefined) request.name = opts.name;
+  if (opts.clearIcon) request.icon = null;
+  else if (opts.icon !== undefined) request.icon = opts.icon;
+  if (Object.keys(request).length === 0) {
+    throw new Error(
+      "No changes requested. Provide --name, --icon, or --clear-icon.",
+    );
+  }
+  return request;
+}
+
+export function formatProjectIcon(icon: string | null): string {
+  return icon ?? "default";
+}
+
 function printProject(project: ProjectResponse): void {
   console.log("");
   console.log(`  ID:       ${project.id}`);
   console.log(`  Name:     ${project.name}`);
+  console.log(`  Icon:     ${formatProjectIcon(project.icon)}`);
   console.log(`  Created:  ${new Date(project.createdAt).toLocaleString()}`);
   console.log(`  Updated:  ${new Date(project.updatedAt).toLocaleString()}`);
   if (project.sources.length > 0) {

@@ -11,6 +11,7 @@ export function makeProjectResponse(
     id: "proj_test",
     kind: "standard",
     name: "Test project",
+    icon: null,
     gitRemoteUrl: null,
     sources: [],
     createdAt: 0,
