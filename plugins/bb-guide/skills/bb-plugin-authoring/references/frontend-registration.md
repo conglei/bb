@@ -8,16 +8,9 @@ the host's shared runtime, so the bundle only works inside bb.
 
 ```tsx
 import {
-  definePluginApp,
-  useRpc,
-  useRealtime,
-  useRealtimeConnectionState,
-  useSettings,
-  useBbContext,
-  useBbNavigate,
-  experimental_FileLink as FileLink,
-  UrlLink as UrlLink,
-  useComposer,
+  definePluginApp, useRpc, useRealtime, useRealtimeConnectionState,
+  useSettings, useBbContext, useBbNavigate, useComposer,
+  experimental_FileLink as FileLink, UrlLink as UrlLink,
 } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner"; // shimmed to the host toaster
 import { Button } from "@/components/ui/button"; // vendored source YOU own
