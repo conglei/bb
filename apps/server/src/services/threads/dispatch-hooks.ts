@@ -28,7 +28,11 @@ import { ApiError } from "../../errors.js";
 import type { AppDeps } from "../../types.js";
 import { toEnvironmentResponse } from "../environments/environment-response.js";
 import { getNonDestroyedHostWithStatus } from "../lib/entity-lookup.js";
-import { pluginHookProvider } from "../plugins/plugin-hook-registry.js";
+import {
+  pluginHookProvider,
+  type PluginHookRegistration,
+} from "../plugins/plugin-hook-registry.js";
+import { projectPluginFilter } from "../plugins/project-plugin-scope.js";
 
 type DispatchHookDeps = Pick<AppDeps, "db" | "hub">;
 
@@ -160,11 +164,23 @@ export function isDispatchRequeuedRecently(threadId: string): boolean {
  * what it was before hooks existed — no lock, no context assembly, no queued
  * row.
  */
-export function hasMessageDispatchHooks(): boolean {
+export function hasMessageDispatchHooks(
+  deps: Pick<DispatchHookDeps, "db">,
+  projectId: string,
+): boolean {
+  return listProjectDispatchHooks(deps, projectId).length > 0;
+}
+
+function listProjectDispatchHooks(
+  deps: Pick<DispatchHookDeps, "db">,
+  projectId: string,
+): PluginHookRegistration<"message.dispatch">[] {
   const provider = pluginHookProvider();
-  return (
-    provider !== undefined && provider.listHooks("message.dispatch").length > 0
-  );
+  if (provider === undefined) return [];
+  const hooks = provider.listHooks("message.dispatch");
+  if (hooks.length === 0) return hooks;
+  const isEnabled = projectPluginFilter(deps.db, projectId);
+  return hooks.filter((hook) => isEnabled(hook.pluginId));
 }
 
 /**
@@ -398,7 +414,7 @@ export async function runMessageDispatchHookPass(
   if (provider === undefined) {
     return { kind: "proceed" };
   }
-  const hooks = provider.listHooks("message.dispatch");
+  const hooks = listProjectDispatchHooks(deps, request.project.id);
   if (hooks.length === 0) {
     return { kind: "proceed" };
   }

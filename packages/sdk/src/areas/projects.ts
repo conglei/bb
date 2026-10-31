@@ -1,4 +1,5 @@
 import type {
+  ProjectPluginEntry,
   MachineEnvironmentReplace,
   MachineEnvironmentSet,
   ProjectMachineEnvironmentList,
@@ -149,6 +150,18 @@ export interface ProjectSourceUpdateArgs extends UpdateProjectSourceRequest {
   sourceId: string;
 }
 
+export interface ProjectPluginsListArgs {
+  projectId: string;
+  signal?: AbortSignal;
+}
+
+export interface ProjectPluginsSetArgs {
+  projectId: string;
+  pluginId: string;
+  /** `null` clears the project's override so the plugin's manifest default applies. */
+  enabled: boolean | null;
+}
+
 export interface ProjectSourceDeleteArgs {
   projectId: string;
   sourceId: string;
@@ -183,7 +196,14 @@ export type ProjectSidebarBootstrapResult = SidebarBootstrapResponse;
 export type ProjectSourceAddResult = ProjectSource;
 export type ProjectSourceDeleteResult = { ok: true };
 export type ProjectSourceUpdateResult = ProjectSource;
+export type ProjectPluginsListResult = ProjectPluginEntry[];
+export type ProjectPluginsSetResult = ProjectPluginEntry[];
 export type ProjectUpdateResult = ProjectResponse;
+
+export interface ProjectPluginsArea {
+  list(args: ProjectPluginsListArgs): Promise<ProjectPluginsListResult>;
+  set(args: ProjectPluginsSetArgs): Promise<ProjectPluginsSetResult>;
+}
 
 export interface ProjectSourcesArea {
   add(args: ProjectSourceAddArgs): Promise<ProjectSourceAddResult>;
@@ -226,6 +246,7 @@ export interface ProjectsArea {
   get(args: ProjectGetArgs): Promise<ProjectGetResult>;
   list(args?: ProjectListArgs): Promise<ProjectListResult>;
   paths(args: ProjectPathsArgs): Promise<ProjectPathsResult>;
+  plugins: ProjectPluginsArea;
   promptHistory(
     args: ProjectPromptHistoryArgs,
   ): Promise<ProjectPromptHistoryResult>;
@@ -420,6 +441,24 @@ export function createProjectsArea(args: CreateSdkAreaArgs): ProjectsArea {
         ),
       );
       return uploadedPromptAttachmentSchema.parse(await response.json());
+    },
+  };
+  const plugins: ProjectPluginsArea = {
+    async list(input) {
+      return transport.readJson(
+        transport.api.v1.projects[":id"].plugins.$get(
+          { param: { id: input.projectId } },
+          ...signalRequestArgs(input.signal),
+        ),
+      );
+    },
+    async set(input) {
+      return transport.readJson(
+        transport.api.v1.projects[":id"].plugins[":pluginId"].$put({
+          param: { id: input.projectId, pluginId: input.pluginId },
+          json: { enabled: input.enabled },
+        }),
+      );
     },
   };
   const sources: ProjectSourcesArea = {
@@ -638,6 +677,7 @@ export function createProjectsArea(args: CreateSdkAreaArgs): ProjectsArea {
         ),
       );
     },
+    plugins,
     sources,
     async update(input) {
       return transport.readJson(

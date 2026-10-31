@@ -16,6 +16,8 @@ import type {
 } from "@get-bb/plugin-sdk";
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiError } from "../../src/errors.js";
+import { setProjectPluginEnabled } from "../../src/services/plugins/project-plugin-scope.js";
+import { hasMessageDispatchHooks } from "../../src/services/threads/dispatch-hooks.js";
 import {
   invokePluginInline,
   setPluginHookProvider,
@@ -609,6 +611,54 @@ describe("message.dispatch hook admission visibility", () => {
         thread: getThread(harness.db, thread.id)!,
       });
       expect(seen[1]).toEqual([thread.id]);
+    });
+  });
+});
+
+describe("dispatch hooks and per-project plugin enablement", () => {
+  it("skips a hook whose plugin is turned off for the project and keeps it elsewhere", async () => {
+    await withTestHarness(async (harness) => {
+      installHooks({
+        "message.dispatch": [
+          {
+            pluginId: "gate",
+            handler: async () => ({
+              action: "reject" as const,
+              message: "gate says no",
+            }),
+          },
+        ],
+      });
+      const { host, project: gated } = seedDispatchFixture(
+        harness,
+        "host-hook-scoped",
+      );
+      const { project: ungated } = seedProjectWithSource(harness.deps, {
+        hostId: host.id,
+        name: "Ungated",
+        path: "/tmp/dispatch-hooks-ungated",
+      });
+      setProjectPluginEnabled(harness.db, harness.hub, {
+        projectId: ungated.id,
+        pluginId: "gate",
+        enabled: false,
+      });
+
+      expect(hasMessageDispatchHooks(harness.deps, gated.id)).toBe(true);
+      expect(hasMessageDispatchHooks(harness.deps, ungated.id)).toBe(false);
+
+      const error = await expectApiError(() =>
+        createHookedThread(harness, { hostId: host.id, projectId: gated.id }),
+      );
+      expect(error.status).toBe(409);
+      expect(error.body.message).toBe("gate says no");
+
+      const thread = await createHookedThread(harness, {
+        hostId: host.id,
+        projectId: ungated.id,
+      });
+      expect(listQueuedThreadMessages(harness.db, thread.id)).toEqual([]);
+      expect(turnRequests(harness, thread.id).length).toBeGreaterThan(0);
     });
   });
 });

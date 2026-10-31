@@ -80,6 +80,9 @@ the most-parsed commands ends with the same shape.
   bb project show <id> --json
     {id, kind, name, gitRemoteUrl, sources}
 
+  bb project plugins list <id> --json
+    [{pluginId, name, icon, enabled, source: "project" | "default"}]    (bare array)
+
   bb machine list --json
     [{id, name, type, status, lifecycle, maxPermissionMode, lastSeenAt}]    (bare array)
 

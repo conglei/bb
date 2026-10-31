@@ -165,6 +165,7 @@ import {
   type ProjectBranchesResponse,
   type ProjectCommandsQuery,
   type ProjectDefaultExecutionOptionsQuery,
+  type ProjectPluginListResponse,
   type ProjectFilesQuery,
   type ProjectListQuery,
   type ProjectPathsQuery,
@@ -287,6 +288,7 @@ import {
   type UpdateHostPermissionCeilingRequest,
   type UpdateProjectRequest,
   type UpdateProjectSourceRequest,
+  type SetProjectPluginRequest,
   type UpdateThreadPluginMetadataRequest,
   type UpdateThreadRequest,
   type UpdateQueuedMessageRequest,
@@ -341,6 +343,7 @@ import {
   projectBranchesQuerySchema,
   projectCommandsQuerySchema,
   projectDefaultExecutionOptionsQuerySchema,
+  setProjectPluginRequestSchema,
   projectFilesQuerySchema,
   projectListQuerySchema,
   projectPathsQuerySchema,
@@ -425,6 +428,7 @@ import {
 import type { ApiError } from "./errors.js";
 
 type PathProjectSourceId = { param: { id: string; sourceId: string } };
+type PathProjectPluginId = { param: { id: string; pluginId: string } };
 type PathThreadMessage = { param: { id: string; seq: string } };
 type PathThreadInteractionId = {
   param: { id: string; interactionId: string };
@@ -532,6 +536,20 @@ export const publicApiRoutes = {
         projectDefaultExecutionOptionsQuerySchema,
       ),
       response: jsonResponse<ProjectExecutionDefaults | null>(),
+    }),
+    listPlugins: defineRoute({
+      path: "/projects/:id/plugins",
+      method: "get",
+      request: noRequest<PathProjectId>(),
+      response: jsonResponse<ProjectPluginListResponse>(),
+    }),
+    setPlugin: defineRoute({
+      path: "/projects/:id/plugins/:pluginId",
+      method: "put",
+      request: jsonRequest<PathProjectPluginId, SetProjectPluginRequest>(
+        setProjectPluginRequestSchema,
+      ),
+      response: jsonResponse<ProjectPluginListResponse>(),
     }),
     promptHistory: defineRoute({
       path: "/projects/:id/prompt-history",

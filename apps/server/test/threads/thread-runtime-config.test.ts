@@ -16,6 +16,11 @@ import type { PluginAgentConfigurationContext } from "@get-bb/plugin-sdk";
 import { buildPluginProviderRegistration } from "../../src/services/providers/plugin-provider-registration.js";
 import type { DiscoveredSkill } from "@bb/host-daemon-contract";
 import { setPluginAgentContributions } from "../../src/services/plugins/plugin-agent-contributions.js";
+import {
+  clearProjectPluginScopeCache,
+  setProjectPluginEnabled,
+  setProjectPluginScopeSource,
+} from "../../src/services/plugins/project-plugin-scope.js";
 import { SkillTreeRegistry } from "../../src/services/skills/injected-skills.js";
 import type { PluginAgentToolContribution } from "../../src/services/plugins/plugin-service.js";
 import { resolveThreadRuntimeCommandConfig } from "../../src/services/threads/thread-runtime-config.js";
@@ -1753,6 +1758,114 @@ describe("thread runtime config", () => {
         expect(instructions).not.toContain(longBody);
         expect(instructions).toContain("x".repeat(4096));
         expect(instructions).not.toContain("x".repeat(4097));
+      });
+    });
+  });
+
+  describe("per-project plugin enablement", () => {
+    afterEach(() => {
+      setPluginAgentContributions(undefined);
+      setProjectPluginScopeSource(undefined);
+      clearProjectPluginScopeCache();
+    });
+
+    it("drops a disabled plugin's tools, instructions and skills and keeps an enabled plugin's", async () => {
+      await withTestHarness(async (harness) => {
+        const hostId = "host-runtime-project-plugins";
+        seedHostSession(harness.deps, { id: hostId });
+        const workspacePath = path.join(
+          harness.config.dataDir,
+          "project-plugins-workspace",
+        );
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId,
+          path: workspacePath,
+        });
+        const environment = seedEnvironment(harness.deps, {
+          hostId,
+          projectId: project.id,
+          path: workspacePath,
+        });
+        const thread = seedThread(harness.deps, {
+          projectId: project.id,
+          environmentId: environment.id,
+          providerId: "codex",
+        });
+        const skillsRoot = path.join(harness.config.dataDir, "plugin-skills");
+        await writeRuntimeSkill({
+          name: "on-skill",
+          rootPath: path.join(skillsRoot, "on"),
+        });
+        await writeRuntimeSkill({
+          name: "off-skill",
+          rootPath: path.join(skillsRoot, "off"),
+        });
+
+        const toolFor = (pluginId: string): PluginAgentToolContribution => ({
+          pluginId,
+          tool: {
+            name: `${pluginId}_tool`,
+            description: `${pluginId} tool`,
+            inputSchema: { type: "object" },
+          },
+          instructions: `Use ${pluginId}_tool.`,
+        });
+        setPluginAgentContributions({
+          listSkillRootContributions: () => [
+            { pluginId: "on", rootPath: path.join(skillsRoot, "on") },
+            { pluginId: "off", rootPath: path.join(skillsRoot, "off") },
+          ],
+          listAgentTools: () => [toolFor("on"), toolFor("off")],
+          listInstructionContributions: () => [
+            { pluginId: "on", provider: () => "on plugin says hi" },
+            { pluginId: "off", provider: () => "off plugin says hi" },
+          ],
+          findAgentTool: () => undefined,
+          invokeAgentTool: async () => ({
+            success: false,
+            contentItems: [{ type: "inputText", text: "unused" }],
+          }),
+          resolveMention: async () => ({ ok: false, error: "unused" }),
+          resolveAgentConfiguration: async () => ({
+            tools: [toolFor("on"), toolFor("off")],
+            selectedSkillIdsByPlugin: new Map(),
+            dynamicInstructions: [
+              { pluginId: "on", text: "on dynamic" },
+              { pluginId: "off", text: "off dynamic" },
+            ],
+          }),
+        });
+        setProjectPluginScopeSource({
+          listProjectScopedPlugins: () => [
+            { pluginId: "on", name: "On", icon: null, projectDefault: "on" },
+            { pluginId: "off", name: "Off", icon: null, projectDefault: "on" },
+          ],
+        });
+        setProjectPluginEnabled(harness.db, harness.hub, {
+          projectId: project.id,
+          pluginId: "off",
+          enabled: false,
+        });
+
+        const runtimeConfig = await resolveThreadRuntimeCommandConfig(
+          harness.deps,
+          { thread, model: "test-model", environment },
+        );
+
+        const toolNames = runtimeConfig.dynamicTools.map((tool) => tool.name);
+        expect(toolNames).toContain("on_tool");
+        expect(toolNames).not.toContain("off_tool");
+        const skillNames = runtimeConfig.injectedSkillSources.map(
+          (source) => source.name,
+        );
+        expect(skillNames).toContain("on-skill");
+        expect(skillNames).not.toContain("off-skill");
+        expect(runtimeConfig.instructions).toContain("on plugin says hi");
+        expect(runtimeConfig.instructions).toContain("on dynamic");
+        expect(runtimeConfig.instructions).toContain("Use on_tool.");
+        expect(runtimeConfig.instructions).not.toContain("off plugin says hi");
+        expect(runtimeConfig.instructions).not.toContain("off dynamic");
+        expect(runtimeConfig.instructions).not.toContain("Use off_tool.");
       });
     });
   });

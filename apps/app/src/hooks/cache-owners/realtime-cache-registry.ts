@@ -76,6 +76,7 @@ import { schedulePluginFrontendReconcile } from "../../lib/plugin-frontend-lazy"
 import {
   getProjectListInvalidationQueryKeys,
   getProjectPromptHistoryInvalidationQueryKeys,
+  getProjectPluginsInvalidationQueryKeys,
   getProjectSourceDependentInvalidationQueryKeys,
   getThreadConversationOutlineInvalidationQueryKeys,
   getThreadDetailInvalidationQueryKeys,
@@ -499,6 +500,9 @@ export const REALTIME_PROJECT_CHANGE_REGISTRY = {
   },
   "project-sources-changed": {
     dirty: [getProjectSourceDependentInvalidationQueryKeys],
+  },
+  "project-plugins-changed": {
+    dirty: [getProjectPluginsInvalidationQueryKeys],
   },
   "threads-changed": {
     dirty: [

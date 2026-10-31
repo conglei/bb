@@ -479,11 +479,11 @@ async function sendClaimedQueuedMessageForIdleProviderThread(
   // what it was before the queue carried waits: the row it claims is already
   // known drainable, so every core wait it could hit has been answered by the
   // claim query itself.
-  if (hasMessageDispatchHooks()) {
+  const thread = args.thread;
+  if (hasMessageDispatchHooks(deps, thread.projectId)) {
     return null;
   }
 
-  const thread = args.thread;
   if (thread.status !== "idle") {
     return null;
   }

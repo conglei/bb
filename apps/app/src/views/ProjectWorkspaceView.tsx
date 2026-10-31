@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { PluginItemIcon } from "@/components/plugin/PluginIcon";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
 import { PageShell } from "@/components/ui/page-shell";
+import { useProjectPlugins } from "@/hooks/queries/project-plugins-query";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { usePluginFrontendsSettled } from "@/lib/plugin-frontend-boot-state";
 import {
@@ -41,7 +42,10 @@ function ProjectViewTabs({
       aria-label="Project views"
       className="-mx-4 overflow-x-auto px-4 md:-mx-5 md:px-5 [scrollbar-width:none]"
     >
-      <ul role="tablist" className="flex min-w-max gap-1 border-b border-border">
+      <ul
+        role="tablist"
+        className="flex min-w-max gap-1 border-b border-border"
+      >
         {views.map((view) => {
           const key = projectViewKeyOf(view);
           const isActive = key === activeViewKey;
@@ -78,17 +82,50 @@ function ProjectViewTabs({
   );
 }
 
+export function selectProjectViews(
+  views: readonly ExperimentalProjectViewSlot[],
+  plugins: {
+    data: readonly { pluginId: string; enabled: boolean }[] | undefined;
+    isError: boolean;
+  },
+): { views: readonly ExperimentalProjectViewSlot[]; settled: boolean } {
+  if (plugins.data === undefined) {
+    return {
+      views: plugins.isError
+        ? views
+        : views.filter((view) => view.pluginId === CORE_PROJECT_VIEW_PLUGIN_ID),
+      settled: plugins.isError,
+    };
+  }
+  const enabled = new Set(
+    plugins.data
+      .filter((plugin) => plugin.enabled)
+      .map((plugin) => plugin.pluginId),
+  );
+  return {
+    views: views.filter(
+      (view) =>
+        view.pluginId === CORE_PROJECT_VIEW_PLUGIN_ID ||
+        enabled.has(view.pluginId),
+    ),
+    settled: true,
+  };
+}
+
 export function ProjectWorkspaceView({
   projectId,
   viewKey,
 }: ProjectWorkspaceViewProps) {
-  const { projectViews } = usePluginSlots();
+  const { projectViews: registeredViews } = usePluginSlots();
   const pluginsSettled = usePluginFrontendsSettled();
   const isCompactViewport = useIsCompactViewport();
   const sidebarNavigationQuery = useSidebarNavigation();
+  const projectPluginsQuery = useProjectPlugins({ projectId });
   const project = sidebarNavigationQuery.data?.projects.find(
     (candidate) => candidate.id === projectId,
   );
+  const { views: projectViews, settled: projectPluginsSettled } =
+    selectProjectViews(registeredViews, projectPluginsQuery);
   const view =
     projectViews.find((candidate) => projectViewKeyOf(candidate) === viewKey) ??
     null;
@@ -115,7 +152,7 @@ export function ProjectWorkspaceView({
           activeViewKey={viewKey}
         />
         {view === null ? (
-          pluginsSettled ? (
+          pluginsSettled && projectPluginsSettled ? (
             <EmptyStatePanel
               className="rounded-lg p-6 text-sm"
               data-testid="project-view-unavailable"

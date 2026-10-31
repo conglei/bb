@@ -45,6 +45,14 @@ export {
   upsertProjectExecutionDefaults,
 } from "./project-execution-defaults.js";
 export {
+  deleteProjectPluginState,
+  deleteProjectPluginStatesForPlugin,
+  getProjectPluginState,
+  listProjectPluginStates,
+  upsertProjectPluginState,
+} from "./project-plugin-states.js";
+export type { ProjectPluginStateRow } from "./project-plugin-states.js";
+export {
   createProjectSource,
   countProjectSources,
   getProjectSourceForProject,

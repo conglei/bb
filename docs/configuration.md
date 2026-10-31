@@ -1027,6 +1027,16 @@ plugins, with `bb plugin config <id> set <key> <value>`, or with SDK
 `plugins.updateSettings({ pluginId, values })`. Running plugins receive changes
 live.
 
+A running plugin can be turned off for one project without disabling it
+server-wide: project settings → Plugins, `bb project plugins
+list|enable|disable|reset <project> [plugin]`, or SDK
+`projects.plugins.set({ projectId, pluginId, enabled })` (`null` clears the
+project's choice). A project with no stored choice uses the plugin manifest's
+`bb.experimental_projectDefault` (`"on"` unless the plugin says `"off"`). A
+plugin that is off for a project contributes no project views, agent tools,
+instructions, skills, provider environment or dispatch hooks there, and its
+tool calls from that project's threads are refused.
+
 ### Multi-plugin repositories
 
 An optional `.bb/plugins.json` collection manifest at a repository root

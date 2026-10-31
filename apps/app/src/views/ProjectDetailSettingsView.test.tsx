@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { Host, ProjectExecutionDefaults } from "@bb/domain";
+import type { ProjectPluginEntry } from "@bb/server-contract";
 import { makeHost } from "@bb/test-helpers/domain-fixtures";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,6 +30,7 @@ vi.mock("@/lib/sdk", () => ({
     projects: {
       defaultExecutionOptions: vi.fn(),
       delete: vi.fn(),
+      plugins: { list: vi.fn(), set: vi.fn() },
       sources: { add: vi.fn(), delete: vi.fn(), update: vi.fn() },
       update: vi.fn(),
     },
@@ -157,6 +159,7 @@ beforeEach(() => {
     path: "/home/me/bb",
   });
   vi.mocked(sdk.projects.defaultExecutionOptions).mockResolvedValue(null);
+  vi.mocked(sdk.projects.plugins.list).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -385,6 +388,83 @@ describe("ProjectDetailSettingsView", () => {
       await screen.findByText("Couldn't load thread defaults."),
     ).toBeDefined();
     expect(screen.queryByText(/^No threads have run here yet/u)).toBeNull();
+  });
+
+  it("toggles a plugin for the project and resets a project override", async () => {
+    stubSidebarBootstrapFetch([
+      { hostId: "host_primary", path: "/Users/me/bb" },
+    ]);
+    const defaults: ProjectPluginEntry[] = [
+      {
+        pluginId: "git",
+        name: "Git",
+        icon: "GitBranch",
+        enabled: true,
+        source: "default",
+      },
+      {
+        pluginId: "kept",
+        name: "Kept",
+        icon: null,
+        enabled: false,
+        source: "default",
+      },
+    ];
+    const overridden: ProjectPluginEntry[] = [
+      defaults[0]!,
+      { ...defaults[1]!, enabled: true, source: "project" },
+    ];
+    vi.mocked(sdk.projects.plugins.list).mockResolvedValue(defaults);
+    vi.mocked(sdk.projects.plugins.set)
+      .mockResolvedValueOnce(overridden)
+      .mockResolvedValueOnce(defaults);
+
+    renderView();
+
+    const keptSwitch = await screen.findByRole("switch", {
+      name: "Use Kept in this project",
+    });
+    expect(keptSwitch.getAttribute("aria-checked")).toBe("false");
+    expect(
+      screen
+        .getByRole("switch", { name: "Use Git in this project" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      screen.queryByRole("button", { name: "Reset to default" }),
+    ).toBeNull();
+
+    fireEvent.click(keptSwitch);
+    await waitFor(() =>
+      expect(sdk.projects.plugins.set).toHaveBeenCalledWith({
+        projectId: "proj_bb",
+        pluginId: "kept",
+        enabled: true,
+      }),
+    );
+    const reset = await screen.findByRole("button", {
+      name: "Reset to default",
+    });
+    expect(screen.getByText("project override")).toBeDefined();
+    expect(
+      screen
+        .getByRole("switch", { name: "Use Kept in this project" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+
+    fireEvent.click(reset);
+    await waitFor(() =>
+      expect(sdk.projects.plugins.set).toHaveBeenLastCalledWith({
+        projectId: "proj_bb",
+        pluginId: "kept",
+        enabled: null,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Reset to default" }),
+      ).toBeNull(),
+    );
   });
 
   it("deletes the project and returns to the list", async () => {

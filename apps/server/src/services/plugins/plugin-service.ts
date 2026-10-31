@@ -123,6 +123,11 @@ import {
 } from "./plugin-artifact-gc.js";
 import { readPluginManifest, type PluginManifest } from "./manifest.js";
 import {
+  forgetPluginProjectStates,
+  projectPluginFilter,
+  type ProjectScopedPlugin,
+} from "./project-plugin-scope.js";
+import {
   RETIRED_BUNDLED_PLUGINS,
   listBundledPluginRegistrations,
 } from "./builtin-registry.js";
@@ -260,6 +265,7 @@ export interface PluginService {
   stop(): Promise<void>;
   handleUncaughtException(error: unknown): boolean;
   list(): InstalledPlugin[];
+  listProjectScopedPlugins(): ProjectScopedPlugin[];
   getDisplayName(id: string): string;
   providerCatalog(): Array<{
     id: string;
@@ -1113,6 +1119,10 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           hasSettings:
             loadedPlugin !== undefined &&
             Object.keys(loadedPlugin.handle.settings.descriptors).length > 0,
+          projectDefault:
+            loadedPlugin?.manifest.projectDefault ??
+            identity?.manifest.projectDefault ??
+            "on",
           app: appBundles.get(row.id)?.state ?? { hasApp: false, bundle: null },
           logoUrl: brandingSet?.logo?.url ?? null,
           logoDarkUrl: brandingSet?.logoDark?.url ?? null,
@@ -1282,6 +1292,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     forgetMutableRoot(row.rootDir);
     deletePluginSchedules(deps.db, row.id);
     deleteAllPluginSettings(deps.db, row.id);
+    forgetPluginProjectStates(deps.db, row.id);
     await rm(pluginSecretsDir(deps.dataDir, row.id), {
       recursive: true,
       force: true,
@@ -2254,6 +2265,17 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       return fail(`bb ${registration.name} failed: ${outcome.error}`);
     },
 
+    listProjectScopedPlugins() {
+      return [...loaded.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([pluginId, plugin]) => ({
+          pluginId,
+          name: plugin.manifest.name,
+          icon: plugin.manifest.branding.icon ?? null,
+          projectDefault: plugin.manifest.projectDefault,
+        }));
+    },
+
     listSkillRootContributions() {
       return [...loaded.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -2276,7 +2298,16 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       const tools: PluginAgentToolContribution[] = [];
       const selectedSkillIdsByPlugin = new Map<string, ReadonlySet<string>>();
       const dynamicInstructions: Array<{ pluginId: string; text: string }> = [];
+      const isEnabledForProject = projectPluginFilter(
+        deps.db,
+        context.project.id,
+      );
       const plugins = [...loaded.entries()]
+        .filter(([pluginId]) => {
+          if (isEnabledForProject(pluginId)) return true;
+          selectedSkillIdsByPlugin.set(pluginId, new Set());
+          return false;
+        })
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([pluginId, plugin]) => ({
           pluginId,

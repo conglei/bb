@@ -76,6 +76,9 @@ const pluginBrandingSchema = z
     },
   );
 
+export const pluginProjectDefaultSchema = z.enum(["on", "off"]);
+export type PluginProjectDefault = z.infer<typeof pluginProjectDefaultSchema>;
+
 const pluginBbManifestSchema = z
   .object({
     name: requiredManifestString,
@@ -92,6 +95,7 @@ const pluginBbManifestSchema = z
           .strict(),
       )
       .optional(),
+    experimental_projectDefault: pluginProjectDefaultSchema.optional(),
     server: requiredManifestString,
     app: requiredManifestString.optional(),
     host: requiredManifestString.optional(),

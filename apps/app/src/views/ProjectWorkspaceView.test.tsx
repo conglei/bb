@@ -52,6 +52,20 @@ vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
   useSidebarNavigation: () => ({ data: sidebarNavigationMock.data }),
 }));
 
+const projectPluginsMock = vi.hoisted(() => ({
+  data: [{ pluginId: "kept", enabled: true }] as
+    | Array<{ pluginId: string; enabled: boolean }>
+    | undefined,
+  isError: false,
+}));
+
+vi.mock("@/hooks/queries/project-plugins-query", () => ({
+  useProjectPlugins: () => ({
+    data: projectPluginsMock.data,
+    isError: projectPluginsMock.isError,
+  }),
+}));
+
 function RoutedProjectWorkspaceView() {
   const params = useParams<{ projectId: string; viewKey: string }>();
   return (
@@ -77,6 +91,8 @@ function renderAt(pathname: string) {
 
 afterEach(() => {
   cleanup();
+  projectPluginsMock.data = [{ pluginId: "kept", enabled: true }];
+  projectPluginsMock.isError = false;
   resetPluginSlotStoreForTest();
   resetPluginFrontendBootStateForTest();
   resetAllCrashedPluginSlotsForTest();
@@ -101,7 +117,10 @@ describe("ProjectWorkspaceView", () => {
   });
 
   it("lists plugin views as tabs and renders the active one with the project id", () => {
-    function Today({ projectId, isCompactViewport }: ExperimentalProjectViewProps) {
+    function Today({
+      projectId,
+      isCompactViewport,
+    }: ExperimentalProjectViewProps) {
       return (
         <output data-testid="today">
           {projectId}:{String(isCompactViewport)}
@@ -129,6 +148,56 @@ describe("ProjectWorkspaceView", () => {
     );
     expect(tabs[1]?.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByTestId("today").textContent).toBe("proj_kept:false");
+  });
+
+  it("hides the tab of a plugin turned off for the project and treats its view as unavailable", () => {
+    function Today({ projectId }: ExperimentalProjectViewProps) {
+      return <output data-testid="today">{projectId}</output>;
+    }
+    setPluginSlotRegistrations(
+      "kept",
+      makePluginRegistrationSet({
+        projectViews: [
+          { id: "today", title: "Today", icon: "Inbox", component: Today },
+        ],
+      }),
+    );
+    projectPluginsMock.data = [{ pluginId: "kept", enabled: false }];
+    markPluginFrontendsSettled();
+
+    renderAt("/projects/proj_kept/views/kept.today");
+
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Threads",
+    ]);
+    expect(screen.queryByTestId("today")).toBeNull();
+    expect(screen.getByTestId("project-view-unavailable")).toBeDefined();
+  });
+
+  it("shows only core views while the project's plugin list loads, then every running plugin's view if it fails", () => {
+    function Today() {
+      return <output data-testid="today">today</output>;
+    }
+    setPluginSlotRegistrations(
+      "kept",
+      makePluginRegistrationSet({
+        projectViews: [
+          { id: "today", title: "Today", icon: "Inbox", component: Today },
+        ],
+      }),
+    );
+    markPluginFrontendsSettled();
+    projectPluginsMock.data = undefined;
+
+    const loading = renderAt("/projects/proj_kept/views/kept.today");
+    expect(screen.getAllByRole("tab")).toHaveLength(1);
+    expect(screen.queryByTestId("project-view-unavailable")).toBeNull();
+    loading.unmount();
+
+    projectPluginsMock.isError = true;
+    renderAt("/projects/proj_kept/views/kept.today");
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(screen.getByTestId("today")).toBeDefined();
   });
 
   it("stays quiet for an unknown view until plugin frontends settle", () => {

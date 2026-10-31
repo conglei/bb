@@ -36,6 +36,7 @@ export const PROJECT_CHANGE_KINDS = [
   "project-updated",
   "project-deleted",
   "project-sources-changed",
+  "project-plugins-changed",
   "threads-changed",
   "project-order-changed",
 ] as const;

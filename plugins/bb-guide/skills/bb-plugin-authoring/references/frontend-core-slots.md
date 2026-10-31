@@ -97,6 +97,8 @@ Slot props contracts (versioned, additive-only):
   `{ count?, text?, tone?, label }` or `null`. Navigate to a view with
   `useBbNavigate().experimental_toProjectView(projectId, { viewKey })`,
   where `viewKey` is `<pluginId>.<viewId>`. The personal project has no page.
+  The tab appears only in projects where the plugin is on (project settings →
+  Plugins; manifest `bb.experimental_projectDefault` sets the default).
   Experimental: see `docs/api_to_audit.md`.
 - `navPanel` → `{ subPath: string }` — owns the whole route at
   `/plugins/<pluginId>/<path>/*` and gets its own navigation rail destination. `subPath`

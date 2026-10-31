@@ -241,6 +241,12 @@ export const installedPluginSchema = z.object({
   cliCommand: z.object({ name: z.string(), summary: z.string() }).nullable(),
   capabilities: pluginCapabilitySummarySchema.default([]),
   hasSettings: z.boolean(),
+  /**
+   * The manifest's `bb.experimental_projectDefault`: whether a project with
+   * no stored override runs this plugin. Older servers omit it, so a reader
+   * falls back to "on", which is what every plugin had before the field.
+   */
+  projectDefault: z.enum(["on", "off"]).default("on"),
   app: pluginAppStateSchema,
   logoUrl: z.string().nullable(),
   logoDarkUrl: z.string().nullable(),

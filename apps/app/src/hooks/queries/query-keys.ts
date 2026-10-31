@@ -22,6 +22,7 @@ const PROJECT_PATHS_QUERY_KEY = "projectPaths";
 const PROJECT_FILE_PREVIEW_QUERY_KEY = "projectFilePreview";
 const PROJECT_ATTACHMENT_PREVIEW_QUERY_KEY = "projectAttachmentPreview";
 export const PROJECT_SOURCE_BRANCHES_QUERY_KEY = "projectSourceBranches";
+const PROJECT_PLUGINS_QUERY_KEY = "projectPlugins";
 const PROJECT_DEFAULT_EXECUTION_OPTIONS_QUERY_KEY =
   "projectDefaultExecutionOptions";
 const PROJECT_PROMPT_HISTORY_QUERY_KEY = "projectPromptHistory";
@@ -135,6 +136,11 @@ type ProjectDefaultExecutionOptionsQueryKey = readonly [
   typeof PROJECT_DEFAULT_EXECUTION_OPTIONS_QUERY_KEY,
   string,
 ];
+type ProjectPluginsQueryKey = readonly [
+  typeof PROJECT_PLUGINS_QUERY_KEY,
+  string,
+];
+type ProjectPluginsQueryKeyPrefix = readonly [typeof PROJECT_PLUGINS_QUERY_KEY];
 type ProjectPromptHistoryQueryKeyPrefix = readonly [
   typeof PROJECT_PROMPT_HISTORY_QUERY_KEY,
 ];
@@ -589,6 +595,16 @@ export function projectDefaultExecutionOptionsQueryKey({
   projectId,
 }: ProjectDefaultExecutionOptionsQueryKeyArgs): ProjectDefaultExecutionOptionsQueryKey {
   return [PROJECT_DEFAULT_EXECUTION_OPTIONS_QUERY_KEY, projectId];
+}
+
+export function projectPluginsQueryKey(
+  projectId: string,
+): ProjectPluginsQueryKey {
+  return [PROJECT_PLUGINS_QUERY_KEY, projectId];
+}
+
+export function projectPluginsQueryKeyPrefix(): ProjectPluginsQueryKeyPrefix {
+  return [PROJECT_PLUGINS_QUERY_KEY];
 }
 
 export function projectPromptHistoryQueryKeyPrefix(): ProjectPromptHistoryQueryKeyPrefix {

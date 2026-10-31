@@ -72,15 +72,24 @@ export function listPluginInstructionContributions(): Array<{
 export async function resolvePluginProviderEnv(args: {
   providerId: string;
   context: ExperimentalPluginProviderEnvContext;
+  isPluginEnabled?: (pluginId: string) => boolean;
 }): Promise<HostDaemonContributedEnvEntry[]> {
   const active = contributions;
   if (!active?.resolveProviderEnv) return [];
-  return (await active.resolveProviderEnv(args)).entries.map((entry) => ({
-    name: entry.name,
-    value: entry.value,
-    source: entry.source,
-    reason: entry.reason,
-  }));
+  const { isPluginEnabled, ...resolveArgs } = args;
+  return (await active.resolveProviderEnv(resolveArgs)).entries
+    .filter(
+      (entry) =>
+        isPluginEnabled === undefined ||
+        !("plugin" in entry.source) ||
+        isPluginEnabled(entry.source.plugin),
+    )
+    .map((entry) => ({
+      name: entry.name,
+      value: entry.value,
+      source: entry.source,
+      reason: entry.reason,
+    }));
 }
 
 export async function resolvePluginProviderEnvHealth(args: {

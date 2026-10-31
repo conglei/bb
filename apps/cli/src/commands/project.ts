@@ -4,6 +4,7 @@ import { Command } from "commander";
 import type {
   CreateProjectSourceRequest,
   HostDiscoveredRepo,
+  ProjectPluginEntry,
   ProjectResponse,
   UpdateProjectSourceRequest,
 } from "@bb/server-contract";
@@ -44,6 +45,10 @@ interface ProjectOpenCommandOptions {
 }
 
 interface ProjectShowCommandOptions {
+  json?: boolean;
+}
+
+interface ProjectPluginsCommandOptions {
   json?: boolean;
 }
 
@@ -260,6 +265,12 @@ export function registerProjectCommands(
   const attachment = project
     .command("attachment")
     .description("Upload and download server-managed project attachments");
+  const plugins = project
+    .command("plugins")
+    .description(
+      "Turn running plugins on or off for one project (views, tools, skills, instructions)",
+    );
+  registerProjectPluginCommands(plugins, getUrl);
 
   attachment
     .command("upload <id>")
@@ -729,6 +740,85 @@ export function registerProjectCommands(
         },
       ),
     );
+}
+
+function registerProjectPluginCommands(
+  plugins: Command,
+  getUrl: () => string,
+): void {
+  plugins
+    .command("list <projectId>")
+    .description("List running plugins and whether each is on for the project")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (projectId: string, opts: ProjectPluginsCommandOptions) => {
+        const sdk = createCliBbSdk(getUrl());
+        const entries = await sdk.projects.plugins.list({ projectId });
+        if (outputJson(opts, entries)) return;
+        printProjectPluginTable(entries);
+      }),
+    );
+
+  const setState = (
+    verb: "enable" | "disable" | "reset",
+    description: string,
+    enabled: boolean | null,
+  ) => {
+    plugins
+      .command(`${verb} <projectId> <pluginId>`)
+      .description(description)
+      .option("--json", "Print machine-readable JSON output")
+      .action(
+        action(
+          async (
+            projectId: string,
+            pluginId: string,
+            opts: ProjectPluginsCommandOptions,
+          ) => {
+            const sdk = createCliBbSdk(getUrl());
+            const entries = await sdk.projects.plugins.set({
+              projectId,
+              pluginId,
+              enabled,
+            });
+            const entry = entries.find((item) => item.pluginId === pluginId);
+            if (outputJson(opts, entry ?? { pluginId, projectId })) return;
+            console.log(
+              entry === undefined
+                ? `Plugin ${pluginId} override cleared for project ${projectId}`
+                : `Plugin ${pluginId} is ${entry.enabled ? "on" : "off"} for project ${projectId} (${entry.source === "project" ? "project override" : "plugin default"})`,
+            );
+          },
+        ),
+      );
+  };
+  setState("enable", "Turn a plugin on for the project", true);
+  setState("disable", "Turn a plugin off for the project", false);
+  setState(
+    "reset",
+    "Clear the project's override so the plugin's default applies",
+    null,
+  );
+}
+
+function printProjectPluginTable(entries: ProjectPluginEntry[]): void {
+  const rows = entries.map((entry) => [
+    entry.pluginId,
+    entry.name,
+    entry.enabled ? "on" : "off",
+    entry.source === "project" ? "project override" : "plugin default",
+  ]);
+  printBorderlessTable(
+    {
+      head: ["PLUGIN", "NAME", "STATE", "SOURCE"],
+      colWidths: columnWidths(
+        [["PLUGIN", "NAME", "STATE", "SOURCE"], ...rows],
+        [4, 4, 4, 4],
+      ),
+      trimTrailingWhitespace: true,
+    },
+    rows,
+  );
 }
 
 function printProject(project: ProjectResponse): void {

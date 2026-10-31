@@ -1,6 +1,7 @@
 import { installDefaultEnvironmentProviders } from "./environment-provider.js";
 import { registerTestHarnessWarmup } from "./test-harness-warmup.js";
 import { setPluginEnvironmentProviderBridge } from "../../src/services/plugins/plugin-environment-provider-registry.js";
+import { clearProjectPluginScopeCache } from "../../src/services/plugins/project-plugin-scope.js";
 import { clearAllThreadProvisionSchedules } from "../../src/services/threads/thread-startup-store.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -359,6 +360,7 @@ export async function createTestAppHarness(
     serverMove,
     async cleanup(): Promise<void> {
       clearAllThreadProvisionSchedules();
+      clearProjectPluginScopeCache();
       setPluginEnvironmentProviderBridge(undefined);
       await pluginService.stop();
       await rm(dataDir, {

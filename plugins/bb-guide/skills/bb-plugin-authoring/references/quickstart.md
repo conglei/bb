@@ -44,6 +44,16 @@ the current engine values and the entries for its generated surfaces.
 - `bb.skills` (optional) — relocates the auto-imported skills directories
   (default `skills/`; `[]` opts out). Every `skills/<name>/SKILL.md` is
   injected into agent threads as the plugin skills tier.
+- `bb.experimental_projectDefault` (optional, `"on"` | `"off"`, default
+  `"on"`) — whether a project with no stored choice runs this plugin. The
+  server-wide enabled flag still decides whether the plugin runs at all; each
+  project can then turn a running plugin on or off (project settings →
+  Plugins, `bb project plugins`, `sdk.projects.plugins`). A plugin that is off
+  for a project contributes no project views, agent tools, instructions,
+  skills, provider environment or `message.dispatch` hooks there, and its
+  tool calls from that project's threads are refused. Ship `"off"` for a
+  plugin built around a project view that only some projects want.
+  Experimental: see `docs/api_to_audit.md`.
 - `bb.themes` (optional) — contributes palettes to Settings → Appearance and
   `bb theme list`. Each entry is
   `{ id, name, description?, css: "./themes/name.css", codeTheme? }`;

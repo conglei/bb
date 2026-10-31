@@ -7,6 +7,7 @@ import type {
   UploadedPromptAttachment,
 } from "@bb/server-contract";
 import { sdk } from "@/lib/sdk";
+import { projectPluginsQueryKey } from "../queries/query-keys";
 import { registerLocalAttachmentPreview } from "@/lib/attachment-local-previews";
 import {
   applyProjectCreateResult,
@@ -203,6 +204,30 @@ export function useDeleteLocalProjectSource() {
         projectId: variables.projectId,
         queryClient,
       });
+    },
+  });
+}
+
+interface SetProjectPluginEnabledRequest {
+  projectId: string;
+  pluginId: string;
+  enabled: boolean | null;
+}
+
+export function useSetProjectPluginEnabled() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: {
+      errorMessage: "Failed to update the project's plugins.",
+    },
+    mutationFn: (request: SetProjectPluginEnabledRequest) =>
+      sdk.projects.plugins.set(request),
+    onSuccess: (entries, variables) => {
+      queryClient.setQueryData(
+        projectPluginsQueryKey(variables.projectId),
+        entries,
+      );
     },
   });
 }

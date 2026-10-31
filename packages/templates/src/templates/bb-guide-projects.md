@@ -89,6 +89,20 @@ Attachments:
   provider can decode them; convert them to JPEG or PNG first. There is no
   command to list or remove project attachments.
 
+Plugins:
+
+  A running plugin can be turned off for one project. Views, tools, skills,
+  instructions and dispatch hooks of a plugin that is off stay out of that
+  project; the plugin keeps running everywhere else. A project with no stored
+  choice uses the plugin's default (`bb.experimental_projectDefault`, "on"
+  unless the plugin says "off").
+
+  bb project plugins list <projectId>     Running plugins and their state here
+  bb project plugins enable <projectId> <pluginId>
+  bb project plugins disable <projectId> <pluginId>
+  bb project plugins reset <projectId> <pluginId>
+                                          Clear the project's choice (use the default)
+
 Sources:
 
   Projects can have multiple machine-local path sources.

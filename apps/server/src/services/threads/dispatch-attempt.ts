@@ -542,7 +542,7 @@ async function runDispatchAttempt(
     }
   };
 
-  if (!sendNow && hasMessageDispatchHooks()) {
+  if (!sendNow && hasMessageDispatchHooks(deps, thread.projectId)) {
     const outcome = await runMessageDispatchHookPass(deps, {
       thread,
       threadResponse: toThreadResponseFromThread(deps, { thread }),

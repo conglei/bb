@@ -11,6 +11,7 @@ import {
   hostPathExistenceQueryKey,
   hostsQueryKey,
   projectPathsQueryKey,
+  projectPluginsQueryKey,
   projectCommandsQueryKey,
   projectFilePreviewQueryKey,
   projectPromptHistoryQueryKey,
@@ -2914,6 +2915,26 @@ describe("createRealtimeCacheEffects", () => {
     expect(
       queryClient.getQueryState(secondProjectSourceBranchesKey)?.isInvalidated,
     ).not.toBe(true);
+
+    effects.dispose();
+  });
+
+  it("invalidates only the changed project's plugin list on project-plugins-changed", () => {
+    const { effects, queryClient } = createRealtimeEffectsTestContext();
+    const firstKey = projectPluginsQueryKey("project-1");
+    const secondKey = projectPluginsQueryKey("project-2");
+    queryClient.setQueryData(firstKey, []);
+    queryClient.setQueryData(secondKey, []);
+
+    effects.handleChanged({
+      type: "changed",
+      entity: "project",
+      id: "project-1",
+      changes: ["project-plugins-changed"],
+    });
+
+    expect(queryClient.getQueryState(firstKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(secondKey)?.isInvalidated).not.toBe(true);
 
     effects.dispose();
   });

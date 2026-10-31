@@ -26,6 +26,10 @@ import {
   resolvePluginAgentConfiguration,
   resolvePluginProviderEnv,
 } from "../plugins/plugin-agent-contributions.js";
+import {
+  projectPluginFilter,
+  withDisabledPluginSkillSelections,
+} from "../plugins/project-plugin-scope.js";
 import { resolveSkillCatalog } from "../skills/skill-catalog.js";
 import { discoverPluginSkillIds } from "../skills/injected-skills.js";
 import { UPDATE_ENVIRONMENT_DIRECTORY_TOOL } from "./thread-environment-directory.js";
@@ -140,6 +144,7 @@ export async function resolveThreadRuntimeCommandConfig(
     workspacePath,
   });
   markTurnTraceSpan("runtimeConfig.workspaceRead");
+  const isPluginEnabledForProject = projectPluginFilter(deps.db, project.id);
   const pluginSkillRoots = getPluginSkillRootContributions();
   const skillIdsByPlugin = await discoverPluginSkillIds(deps.logger, {
     pluginSkillRoots,
@@ -198,6 +203,7 @@ export async function resolveThreadRuntimeCommandConfig(
         projectId: project.id,
         hostId: host.id,
       },
+      isPluginEnabled: isPluginEnabledForProject,
     }),
   );
   markTurnTraceSpan("runtimeConfig.env");
@@ -205,7 +211,11 @@ export async function resolveThreadRuntimeCommandConfig(
     await resolveSkillCatalog(deps, {
       projectSkillSources: workspaceAgentContext.projectSkillSources,
       sharedSkillSources: workspaceAgentContext.sharedSkills.runtimeSources,
-      pluginSkillSelections: conditionalConfiguration.selectedSkillIdsByPlugin,
+      pluginSkillSelections: withDisabledPluginSkillSelections({
+        isEnabled: isPluginEnabledForProject,
+        pluginIds: pluginSkillRoots.map((root) => root.pluginId),
+        base: conditionalConfiguration.selectedSkillIdsByPlugin,
+      }),
     })
   ).map((entry) => entry.runtimeSource);
   const dataDirAgentInstructions = readDataDirAgentInstructions(
@@ -213,7 +223,9 @@ export async function resolveThreadRuntimeCommandConfig(
     deps.config.dataDir,
   );
   const dynamicToolContributions = resolveDynamicTools(
-    conditionalConfiguration.tools,
+    conditionalConfiguration.tools.filter((contribution) =>
+      isPluginEnabledForProject(contribution.pluginId),
+    ),
   );
   const dynamicTools = dynamicToolContributions.map(
     (contribution) => contribution.tool,
@@ -231,6 +243,7 @@ export async function resolveThreadRuntimeCommandConfig(
     }
   }
   for (const contribution of listPluginInstructionContributions()) {
+    if (!isPluginEnabledForProject(contribution.pluginId)) continue;
     let text: string | null;
     try {
       text = contribution.provider({
@@ -258,6 +271,7 @@ export async function resolveThreadRuntimeCommandConfig(
     );
   }
   for (const contribution of conditionalConfiguration.dynamicInstructions) {
+    if (!isPluginEnabledForProject(contribution.pluginId)) continue;
     instructionSections.push(
       `The following dynamic instructions come from the BB plugin "${contribution.pluginId}":`,
       contribution.text,

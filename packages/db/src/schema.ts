@@ -191,6 +191,19 @@ export const projectExecutionDefaults = sqliteTable(
   ],
 );
 
+export const projectPluginStates = sqliteTable(
+  "project_plugin_states",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    pluginId: text("plugin_id").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.pluginId] })],
+);
+
 export const systemExperiments = sqliteTable("system_experiments", {
   key: text("key").primaryKey(),
   value: integer("value", { mode: "boolean" }).notNull(),

@@ -215,6 +215,31 @@ export type ProjectDefaultExecutionOptionsQuery = z.infer<
   typeof projectDefaultExecutionOptionsQuerySchema
 >;
 
+export const projectPluginEntrySchema = z.object({
+  pluginId: z.string(),
+  name: z.string(),
+  icon: z.string().nullable(),
+  enabled: z.boolean(),
+  source: z.enum(["project", "default"]),
+});
+export type ProjectPluginEntry = z.infer<typeof projectPluginEntrySchema>;
+
+export const projectPluginListResponseSchema = z.array(
+  projectPluginEntrySchema,
+);
+export type ProjectPluginListResponse = z.infer<
+  typeof projectPluginListResponseSchema
+>;
+
+export const setProjectPluginRequestSchema = z
+  .object({
+    enabled: z.boolean().nullable(),
+  })
+  .strict();
+export type SetProjectPluginRequest = z.infer<
+  typeof setProjectPluginRequestSchema
+>;
+
 export const promptHistoryQuerySchema = z
   .object({
     limit: z.string().regex(/^\d+$/),

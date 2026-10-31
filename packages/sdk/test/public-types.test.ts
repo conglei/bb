@@ -339,6 +339,7 @@ type ExpectedProjectsKey =
   | "get"
   | "list"
   | "paths"
+  | "plugins"
   | "promptHistory"
   | "reorder"
   | "sidebarBootstrap"
@@ -346,6 +347,7 @@ type ExpectedProjectsKey =
   | "update";
 
 type ExpectedProjectSourcesKey = "add" | "delete" | "update";
+type ExpectedProjectPluginsKey = "list" | "set";
 type ExpectedProjectAttachmentsKey = "copy" | "read" | "upload";
 
 type ExpectedProvidersKey = "catalog" | "list" | "models" | "setEnabled";
@@ -585,6 +587,9 @@ describe("SDK public type entrypoints", () => {
     expectTypeOf<
       keyof RootBbSdk["projects"]["sources"]
     >().toEqualTypeOf<ExpectedProjectSourcesKey>();
+    expectTypeOf<
+      keyof RootBbSdk["projects"]["plugins"]
+    >().toEqualTypeOf<ExpectedProjectPluginsKey>();
     expectTypeOf<
       keyof RootBbSdk["experimental_promptHistory"]
     >().toEqualTypeOf<ExpectedExperimentalPromptHistoryKey>();

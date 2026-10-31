@@ -101,6 +101,23 @@ describe("plugin manifest", () => {
     },
   );
 
+  it("reads bb.experimental_projectDefault and defaults it to on", async () => {
+    await writeManifest();
+    expect((await readPluginManifest(rootDir)).projectDefault).toBe("on");
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectDefault: "off",
+    });
+    expect((await readPluginManifest(rootDir)).projectDefault).toBe("off");
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectDefault: "maybe",
+    });
+    await expect(readPluginManifest(rootDir)).rejects.toThrow(
+      /experimental_projectDefault/,
+    );
+  });
+
   it("requires branding with an icon or light logo", async () => {
     for (const branding of [undefined, null, {}, { icon: "   " }]) {
       await writeManifest(undefined, { ...validBb, branding });

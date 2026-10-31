@@ -61,6 +61,7 @@ import {
 import { setPluginAgentContributions } from "./services/plugins/plugin-agent-contributions.js";
 import { setPluginThreadEventEmitter } from "./services/plugins/plugin-thread-events.js";
 import { setPluginHookProvider } from "./services/plugins/plugin-hook-registry.js";
+import { setProjectPluginScopeSource } from "./services/plugins/project-plugin-scope.js";
 import {
   setEnvironmentProviderRecheckHandler,
   setEnvironmentProvisioningRecheckHandler,
@@ -862,6 +863,7 @@ export function createApp(
   });
   // Bridge runtime-config assembly to plugin skills + context (§4.4).
   setPluginAgentContributions(pluginService);
+  setProjectPluginScopeSource(pluginService);
   const serverMove = createServerMoveCoordinator(
     createDefaultServerMoveEnvironment({
       appSurface: serverMoveOptions.appSurface,

@@ -14,6 +14,7 @@ import {
 } from "../services/plugins/plugin-agent-contributions.js";
 import { deliverDetachedToolResult } from "../services/plugins/detached-tool-result-delivery.js";
 import { requirePluginToolCallRegistry } from "../services/plugins/plugin-tool-calls.js";
+import { isPluginEnabledForProject } from "../services/plugins/project-plugin-scope.js";
 import {
   handleUpdateEnvironmentDirectoryToolCall,
   UPDATE_ENVIRONMENT_DIRECTORY_TOOL_NAME,
@@ -87,6 +88,23 @@ export function registerInternalToolCallRoutes(app: Hono, deps: AppDeps): void {
       }
 
       const pluginTool = findPluginAgentTool(payload.tool);
+      if (
+        pluginTool &&
+        !isPluginEnabledForProject(deps.db, {
+          pluginId: pluginTool.pluginId,
+          projectId: thread.projectId,
+        })
+      ) {
+        return context.json({
+          success: false,
+          contentItems: [
+            {
+              type: "inputText",
+              text: `Tool "${payload.tool}" is unavailable: the "${pluginTool.pluginId}" plugin is turned off for this project`,
+            },
+          ],
+        });
+      }
       if (pluginTool) {
         const roundTrip = new AbortController();
         const response = requirePluginToolCallRegistry().run({

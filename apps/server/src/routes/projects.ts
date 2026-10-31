@@ -53,10 +53,7 @@ import {
   requirePublicProject,
   requirePublicStandardProject,
 } from "../services/lib/entity-lookup.js";
-import {
-  isWindowsHostPath,
-  PROMPT_HISTORY_ENTRY_LIMIT,
-} from "@bb/domain";
+import { isWindowsHostPath, PROMPT_HISTORY_ENTRY_LIMIT } from "@bb/domain";
 import { toThreadListEntryResponses } from "../services/threads/thread-runtime-display.js";
 import { callHostRetryableOnlineRpc } from "../services/hosts/online-rpc.js";
 import {
@@ -93,6 +90,14 @@ import {
 } from "./branch-list-query.js";
 import { parseFileListLimit } from "./file-list-query.js";
 import { resolveSkillCatalog } from "../services/skills/skill-catalog.js";
+import { getPluginSkillRootContributions } from "../services/plugins/plugin-agent-contributions.js";
+import {
+  isProjectScopedPluginKnown,
+  listProjectPlugins,
+  projectPluginFilter,
+  setProjectPluginEnabled,
+  withDisabledPluginSkillSelections,
+} from "../services/plugins/project-plugin-scope.js";
 import {
   readWorkspaceAgentContext,
   type WorkspaceAgentContext,
@@ -486,6 +491,31 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
     return context.json(getProjectExecutionDefaults(deps.db, { projectId }));
   });
 
+  get(routes.listPlugins, (context) => {
+    const projectId = context.req.param("id");
+    requirePublicProject(deps.db, projectId);
+    return context.json(listProjectPlugins(deps.db, projectId));
+  });
+
+  put(routes.setPlugin, (context, payload) => {
+    const projectId = context.req.param("id");
+    const pluginId = context.req.param("pluginId");
+    requirePublicProject(deps.db, projectId);
+    if (!isProjectScopedPluginKnown(pluginId)) {
+      throw new ApiError(
+        404,
+        "unknown_plugin",
+        `No running plugin "${pluginId}"`,
+      );
+    }
+    setProjectPluginEnabled(deps.db, deps.hub, {
+      projectId,
+      pluginId,
+      enabled: payload.enabled,
+    });
+    return context.json(listProjectPlugins(deps.db, projectId));
+  });
+
   get(routes.promptHistory, (context, query) => {
     const projectId = context.req.param("id");
     requirePublicProject(deps.db, projectId);
@@ -786,6 +816,12 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
     const skillCatalog = await resolveSkillCatalog(deps, {
       projectSkillSources: workspaceSkills.projectSkillSources,
       sharedSkillSources: workspaceSkills.sharedSkills.runtimeSources,
+      pluginSkillSelections: withDisabledPluginSkillSelections({
+        isEnabled: projectPluginFilter(deps.db, projectId),
+        pluginIds: getPluginSkillRootContributions().map(
+          (root) => root.pluginId,
+        ),
+      }),
     });
     return context.json(
       buildCommandListResponse({

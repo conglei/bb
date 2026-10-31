@@ -11,6 +11,8 @@ import {
   allThreadTimelineTurnSummaryDetailsQueryKeyPrefix,
   hostPathExistenceQueryKeyPrefix,
   projectPathsQueryKeyPrefix,
+  projectPluginsQueryKey,
+  projectPluginsQueryKeyPrefix,
   projectPromptHistoryQueryKey,
   projectPromptHistoryQueryKeyPrefix,
   projectSourceBranchesQueryKeyPrefix,
@@ -46,6 +48,14 @@ export function getProjectListInvalidationQueryKeys(): QueryKey[] {
     sidebarNavigationQueryKey(),
     threadSearchQueryKeyPrefix(),
   ];
+}
+
+export function getProjectPluginsInvalidationQueryKeys({
+  projectId,
+}: ProjectScopedInvalidationArgs): QueryKey[] {
+  return projectId
+    ? [projectPluginsQueryKey(projectId)]
+    : [projectPluginsQueryKeyPrefix()];
 }
 
 export function getProjectPromptHistoryInvalidationQueryKeys({

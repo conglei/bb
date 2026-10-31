@@ -2393,10 +2393,13 @@ Docs: `frontend-core-slots.md`.
 
 **Audit before stabilizing.**
 
-1. **Per-project enablement.** Today every registered view appears in every
-   project. The planned `project_plugin_states` table hides views of plugins
-   turned off for a project and drops those plugins from the project's agent
-   context; confirm the slot needs no change once that lands.
+1. **Per-project enablement.** Landed: `project_plugin_states` rows and the
+   manifest's `bb.experimental_projectDefault` decide which plugins take part
+   in a project (see that entry). `ProjectWorkspaceView` hides the views of
+   plugins turned off for the project and the server drops their tools,
+   skills, instructions, dispatch hooks and tool calls there. The slot itself
+   needed no change; confirm that stays true when view order and default view
+   become per-project settings.
 2. **Order and default view.** Views are ordered core first, then by plugin
    id. Decide whether the order and the default view become a per-project
    setting (synced preference or table) and whether `/projects/:projectId`
@@ -2411,6 +2414,37 @@ Docs: `frontend-core-slots.md`.
 6. **Project scope for data.** Decide whether `bb.storage` and plugin
    settings grow a per-project variant so views can keep per-project state
    without inventing their own keying.
+
+## Manifest `bb.experimental_projectDefault`
+
+`"on" | "off"`, default `"on"`. Whether a project with no stored override runs
+this plugin. The server-wide `enabled` flag still decides whether the plugin
+runs at all; a per-project row in `project_plugin_states` (`GET`/`PUT
+/projects/:id/plugins[/:pluginId]`, `sdk.projects.plugins`, `bb project plugins
+list|enable|disable|reset`, the project settings "Plugins" section) turns a
+running plugin on or off for one project, and a missing row falls back to this
+default. A plugin that is off for a project contributes no agent tools, dynamic
+or static instructions, skills, provider environment, `message.dispatch` hooks
+or project views there, and its tool calls from that project's threads are
+refused. Thread events still reach the plugin for every thread. The server
+reads the value through `apps/server/src/services/plugins/project-plugin-scope.ts`,
+and `InstalledPlugin.projectDefault` surfaces it to clients. Core has no plugin
+shipping `"off"` yet; the Kept plugin is the first consumer.
+
+Docs: `quickstart.md` (manifest), `frontend-core-slots.md`
+(`experimental_projectView`).
+
+**Audit before stabilizing.**
+
+1. **Filter coverage.** Composer customizations, mentions and plugin reads are
+   not project-scoped yet; decide whether they must be before the field drops
+   its prefix, and whether thread events should be.
+2. **Project creation.** Decide whether a project template or the create
+   flow can pre-set rows, and whether `"off"` plugins should prompt once.
+3. **Personal project.** Rows are accepted for every public project including
+   the personal one, which has no project page; confirm that is intended.
+4. **Cache scope.** The server cache is per process and cleared on writes and
+   plugin removal; confirm nothing else writes the table.
 
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 
