@@ -32,7 +32,7 @@ const paneContentSchema = z.discriminatedUnion("kind", [
     .object({
       kind: z.literal("project-view"),
       projectId: z.string().min(1),
-      viewKey: z.string().min(1),
+      viewKey: z.string().min(1).nullable(),
     })
     .strict(),
 ]);

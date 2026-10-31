@@ -12,7 +12,10 @@ import {
   markPluginFrontendsSettled,
   resetPluginFrontendBootStateForTest,
 } from "@/lib/plugin-frontend-boot-state";
-import { PROJECT_VIEW_ROUTE_PATH } from "@/lib/route-paths";
+import {
+  PROJECT_DEFAULT_VIEW_ROUTE_PATH,
+  PROJECT_VIEW_ROUTE_PATH,
+} from "@/lib/route-paths";
 import { resetAllCrashedPluginSlotsForTest } from "@/components/plugin/PluginSlotMount";
 import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView";
@@ -71,7 +74,7 @@ function RoutedProjectWorkspaceView() {
   return (
     <ProjectWorkspaceView
       projectId={params.projectId ?? ""}
-      viewKey={params.viewKey ?? ""}
+      viewKey={params.viewKey ?? null}
     />
   );
 }
@@ -82,6 +85,10 @@ function renderAt(pathname: string) {
       <Routes>
         <Route
           path={PROJECT_VIEW_ROUTE_PATH}
+          element={<RoutedProjectWorkspaceView />}
+        />
+        <Route
+          path={PROJECT_DEFAULT_VIEW_ROUTE_PATH}
           element={<RoutedProjectWorkspaceView />}
         />
       </Routes>
@@ -202,6 +209,84 @@ describe("ProjectWorkspaceView", () => {
     renderAt("/projects/proj_kept/views/kept.today");
     expect(screen.getAllByRole("tab")).toHaveLength(2);
     expect(screen.getByTestId("today")).toBeDefined();
+  });
+
+  it("opens the unnamed view on the first enabled view that claims the default, once plugins settle", () => {
+    function Today() {
+      return <output data-testid="today">today</output>;
+    }
+    function Board() {
+      return <output data-testid="board">board</output>;
+    }
+    setPluginSlotRegistrations(
+      "kept",
+      makePluginRegistrationSet({
+        projectViews: [
+          {
+            id: "today",
+            title: "Today",
+            icon: "Inbox",
+            component: Today,
+            experimental_default: true,
+          },
+          {
+            id: "board",
+            title: "Board",
+            icon: "Columns",
+            component: Board,
+            experimental_default: true,
+          },
+        ],
+      }),
+    );
+
+    renderAt("/projects/proj_kept/views");
+
+    expect(
+      screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-selected")),
+    ).toEqual(["false", "false", "false"]);
+    expect(screen.queryByTestId("project-threads-count")).toBeNull();
+    expect(screen.queryByTestId("today")).toBeNull();
+    act(() => markPluginFrontendsSettled());
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual([
+      "false",
+      "true",
+      "false",
+    ]);
+    expect(screen.getByTestId("today")).toBeDefined();
+    expect(screen.queryByTestId("board")).toBeNull();
+  });
+
+  it("opens the unnamed view on Threads when no enabled view claims the default", () => {
+    function Today() {
+      return <output data-testid="today">today</output>;
+    }
+    setPluginSlotRegistrations(
+      "kept",
+      makePluginRegistrationSet({
+        projectViews: [
+          {
+            id: "today",
+            title: "Today",
+            icon: "Inbox",
+            component: Today,
+            experimental_default: true,
+          },
+        ],
+      }),
+    );
+    projectPluginsMock.data = [{ pluginId: "kept", enabled: false }];
+    markPluginFrontendsSettled();
+
+    renderAt("/projects/proj_kept/views");
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Threads"]);
+    expect(tabs[0]?.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("project-threads-count").textContent).toBe("2");
+    expect(screen.queryByTestId("today")).toBeNull();
   });
 
   it("stays quiet for an unknown view until plugin frontends settle", () => {

@@ -24,6 +24,7 @@ import {
   getThreadRoutePath,
   PLUGIN_DETAIL_ROUTE_PATH,
   PLUGIN_PANEL_ROUTE_PATH,
+  PROJECT_DEFAULT_VIEW_ROUTE_PATH,
   PROJECT_VIEW_ROUTE_PATH,
 } from "@/lib/route-paths";
 
@@ -70,7 +71,10 @@ export function paneContentRoute(content: PaneContent): string {
     return getPluginDetailRoutePath({ pluginId: content.pluginId });
   }
   if (content.kind === "project-view") {
-    return getProjectViewRoutePath(content.projectId, content.viewKey);
+    return getProjectViewRoutePath(
+      content.projectId,
+      content.viewKey ?? undefined,
+    );
   }
   const panelRoute = getPluginPanelRoutePath({
     pluginId: content.pluginId,
@@ -121,6 +125,17 @@ export function paneContentForPathname(pathname: string): PaneContent | null {
       kind: "project-view",
       projectId: decodePluginRouteParam(projectView.params.projectId),
       viewKey: decodePluginRouteParam(projectView.params.viewKey),
+    };
+  }
+  const projectDefaultView = matchPath(
+    PROJECT_DEFAULT_VIEW_ROUTE_PATH,
+    pathname,
+  );
+  if (projectDefaultView?.params.projectId) {
+    return {
+      kind: "project-view",
+      projectId: decodePluginRouteParam(projectDefaultView.params.projectId),
+      viewKey: null,
     };
   }
   const detail = matchPath(PLUGIN_DETAIL_ROUTE_PATH, pathname);

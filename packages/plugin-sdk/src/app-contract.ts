@@ -1017,6 +1017,14 @@ export interface ExperimentalProjectViewRegistration {
   icon: BbIconName;
   component: ComponentType<ExperimentalProjectViewProps>;
   /**
+   * Open the project page on this view when no view is named: the project's
+   * name in the sidebar, the project menus, the settings page and
+   * `bb project open` all land here. Only counts in projects where the plugin
+   * is on. When several enabled views claim it, the first registered one wins;
+   * without one, core's "Threads" view opens.
+   */
+  experimental_default?: boolean;
+  /**
    * Optional React hook returning the tab's badge, or `null` for none, run in
    * the plugin's scope with the project whose page is open. A hook that throws
    * or returns an invalid badge shows no badge.

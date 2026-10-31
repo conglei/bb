@@ -60,7 +60,7 @@ describe("ProjectActionsMenu", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("location").textContent).toBe(
-        `/projects/${project.id}/views/core.threads`,
+        `/projects/${project.id}/views`,
       );
     });
   });

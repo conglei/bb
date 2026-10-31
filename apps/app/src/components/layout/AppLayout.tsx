@@ -104,6 +104,7 @@ import {
   getThreadRoutePath,
   isProjectlessProjectId,
   SETTINGS_ROUTE_PATH,
+  PROJECT_DEFAULT_VIEW_ROUTE_PATH,
   PROJECT_VIEW_ROUTE_PATH,
 } from "@/lib/route-paths";
 import { useQuickCreateProjectController } from "@/hooks/useQuickCreateProject";
@@ -627,7 +628,8 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   const animationFrameRef = useRef<number | null>(null);
   const showHeader = !isThreadView && !isRootView && pluginPanelRoute === null;
   const isProjectViewRoute =
-    matchPath(PROJECT_VIEW_ROUTE_PATH, location.pathname) !== null;
+    matchPath(PROJECT_VIEW_ROUTE_PATH, location.pathname) !== null ||
+    matchPath(PROJECT_DEFAULT_VIEW_ROUTE_PATH, location.pathname) !== null;
   const [desktopInfo] = useState(getBbDesktopInfo);
   const desktopWindowState = useDesktopWindowState();
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);

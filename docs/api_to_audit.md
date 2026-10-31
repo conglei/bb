@@ -2387,7 +2387,11 @@ Adds a tab to every project's page at
 (`apps/app/src/components/project/core-project-views.tsx`) registers through
 the same slot with `pluginId: "core"`, so core and plugins share one path. The
 page opens from the project's name in the sidebar (thread-list plugin), the
-project menus, the project settings page, and `bb project open`.
+project menus, the project settings page, and `bb project open`, all at
+`/projects/<projectId>/views` with no view named. That route resolves in
+`ProjectWorkspaceView` once the project's plugins have settled: the first
+enabled view registered with `experimental_default: true` wins, else core's
+Threads. A split pane holds the unnamed view as `viewKey: null`.
 
 Docs: `frontend-core-slots.md`.
 
@@ -2401,9 +2405,11 @@ Docs: `frontend-core-slots.md`.
    needed no change; confirm that stays true when view order and default view
    become per-project settings.
 2. **Order and default view.** Views are ordered core first, then by plugin
-   id. Decide whether the order and the default view become a per-project
-   setting (synced preference or table) and whether `/projects/:projectId`
-   should open the page instead of redirecting to compose.
+   id, and a plugin claims the default with `experimental_default` on its
+   registration (Kept's Today). Decide whether the order and the default view
+   become a per-project setting (synced preference or table) that overrides
+   the claim, and whether `/projects/:projectId` should open the page instead
+   of redirecting to compose.
 3. **View identity.** `<pluginId>.<viewId>` keys the URL. Confirm the `.`
    separator and that plugin ids can never contain one.
 4. **Badge contract.** `experimental_useBadge({ projectId })` mirrors
