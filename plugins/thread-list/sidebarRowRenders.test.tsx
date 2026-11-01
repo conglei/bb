@@ -105,7 +105,7 @@ describe.each<OrganizationMode>(["chronological", "project"])(
               id: PERSONAL_PROJECT_ID,
               name: "Personal",
               isPersonal: true,
-              experimental_ownerPluginId: null,
+              experimental_ownerPlugin: null,
             }),
           ],
           sections: [],

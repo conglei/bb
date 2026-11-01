@@ -1467,6 +1467,13 @@ export interface PluginSidebarThread {
   latestAttentionAt: number;
 }
 
+/** The plugin that owns a sidebar project (see `PluginSidebarProject`). */
+export interface ExperimentalSidebarProjectOwnerPlugin {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
 /** One project in the sidebar's live view. */
 export interface PluginSidebarProject {
   id: string;
@@ -1481,10 +1488,11 @@ export interface PluginSidebarProject {
   isPersonal: boolean;
   /**
    * The plugin whose workspace this project is (manifest
-   * `bb.experimental_workspace`), or null for a project the user owns.
+   * `bb.experimental_workspace`), with its display name and branding icon
+   * for `experimental_PluginIcon`, or null for a project the user owns.
    * Experimental: see docs/api_to_audit.md.
    */
-  experimental_ownerPluginId: string | null;
+  experimental_ownerPlugin: ExperimentalSidebarProjectOwnerPlugin | null;
   /** The app-relative URL of the project's compose screen. */
   href: string;
   /** The app-relative URL of the project's settings page. */

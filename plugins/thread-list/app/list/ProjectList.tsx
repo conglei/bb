@@ -60,6 +60,7 @@ import {
 } from "../ui/sidebar.js";
 import {
   ChronologicalSectionThreadSections,
+  ProjectRow,
   ProjectThreadTree,
 } from "./ProjectRow.js";
 import type { ProjectThreadListState } from "./ProjectRow.js";
@@ -580,11 +581,6 @@ function ProjectModeSections({
     () =>
       projects
         .filter((project) => !project.isPersonal)
-        .sort(
-          (a, b) =>
-            Number(a.experimental_ownerPluginId !== null) -
-            Number(b.experimental_ownerPluginId !== null),
-        )
         .map((project) => ({
           project,
           threadListState: getProjectThreadListState({
@@ -595,20 +591,28 @@ function ProjectModeSections({
         })),
     [projects, status, threadsByProject],
   );
+  const userProjectRows = useMemo(
+    () => projectRows.filter((row) => row.project.experimental_ownerPlugin === null),
+    [projectRows],
+  );
+  const pluginProjectRows = useMemo(
+    () => projectRows.filter((row) => row.project.experimental_ownerPlugin !== null),
+    [projectRows],
+  );
   const projectSectionIds = useMemo(
     () =>
-      projectRows.map((row) =>
+      userProjectRows.map((row) =>
         buildSidebarEntitySectionId("project", row.project.id),
       ),
-    [projectRows],
+    [userProjectRows],
   );
   const projectRowsBySectionId = useMemo(() => {
     const rows = new Map<SidebarSectionId, ProjectListRowModel>();
-    for (const row of projectRows) {
+    for (const row of userProjectRows) {
       rows.set(buildSidebarEntitySectionId("project", row.project.id), row);
     }
     return rows;
-  }, [projectRows]);
+  }, [userProjectRows]);
   const personalThreads = useMemo(() => {
     if (personalProjectId === null) return EMPTY_THREAD_LIST;
     return (
@@ -742,7 +746,7 @@ function ProjectModeSections({
       const items = projectItemsByProjectId.get(row.project.id) ?? [];
       return {
         id,
-        title: row.project.name,
+        title: row.project.experimental_ownerPlugin?.name ?? row.project.name,
         threads: getProjectThreadItemDescendants(items),
         onNewThread: () => onCreateProjectThread(row.project.id),
         renderContent: (close: () => void) => (
@@ -821,6 +825,39 @@ function ProjectModeSections({
           );
         }}
       </ReorderableSidebarSectionOrderList>
+      {pluginProjectRows.length > 0 ? (
+        <div
+          className="mt-2 border-t border-border pt-2"
+          data-sidebar-plugin-workspaces=""
+        >
+          {pluginProjectRows.map((row) => {
+            const sectionId = buildSidebarEntitySectionId(
+              "project",
+              row.project.id,
+            );
+            return (
+              <ThreadListVisibilityGroupScope key={sectionId} id={sectionId}>
+                <ProjectRow
+                  project={row.project}
+                  rootItems={projectItemsByProjectId.get(row.project.id)}
+                  threadListState={row.threadListState}
+                  selectedThreadId={selectedThreadId}
+                  isActive={row.isActive}
+                  isCollapsed={collapsedProjectIds.has(row.project.id)}
+                  collapsedThreadIds={collapsedThreadIds}
+                  collapsedEnvironmentIds={collapsedEnvironmentIds}
+                  compareThreads={compareThreads}
+                  onProjectSelect={onProjectSelect}
+                  onCreateProjectThread={onCreateProjectThread}
+                  onToggleProjectCollapsed={toggleProjectCollapsed}
+                  onToggleThreadCollapsed={onToggleThreadCollapsed}
+                  onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+                />
+              </ThreadListVisibilityGroupScope>
+            );
+          })}
+        </div>
+      ) : null}
       <ThreadListMore />
     </ThreadListVisibility>
   );

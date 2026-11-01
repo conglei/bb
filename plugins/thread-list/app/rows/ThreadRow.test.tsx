@@ -1075,7 +1075,7 @@ describe("ThreadRow", () => {
           name: "Web App",
           icon: null,
           isPersonal: false,
-          experimental_ownerPluginId: null,
+          experimental_ownerPlugin: null,
           href: "/projects/proj_other",
           settingsHref: "/projects/proj_other/settings",
         },

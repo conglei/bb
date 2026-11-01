@@ -43,6 +43,7 @@ import { createPortal } from "react-dom";
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import { toast } from "sonner";
 import {
+  experimental_PluginIcon as PluginIcon,
   experimental_useArchiveEnvironmentThreads,
   useBbNavigate,
   useEnvironmentProviders,
@@ -2257,9 +2258,14 @@ function ProjectRowComponent({
           data-sidebar-project-id={project.id}
         >
           <TopLevelSidebarSection
-            label={project.name}
+            label={project.experimental_ownerPlugin?.name ?? project.name}
             labelIcon={
-              project.icon === null ? undefined : (
+              project.experimental_ownerPlugin ? (
+                <PluginIcon
+                  pluginId={project.experimental_ownerPlugin.id}
+                  icon={project.experimental_ownerPlugin.icon}
+                />
+              ) : project.icon === null ? undefined : (
                 <Icon name={project.icon} fallback="FolderGit" />
               )
             }

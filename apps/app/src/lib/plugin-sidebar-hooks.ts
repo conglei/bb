@@ -35,6 +35,7 @@ import { getThreadConversationCollapsedAtom } from "@/components/secondary-panel
 import { useThreadActions } from "@/components/thread/ThreadActionsProvider";
 import { useRetiredSidebarEnvironmentPullRequest } from "./retired-sidebar-pull-request";
 import { useHosts } from "@/hooks/queries/host-queries";
+import { usePluginList } from "@/hooks/queries/plugin-settings-queries";
 import { useArchivedThreads } from "@/hooks/queries/thread-queries";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import {
@@ -150,6 +151,17 @@ export function useSidebarThreads(
   const { data: hosts } = useHosts();
   const hostNamesById = hostNamesFor(hosts);
   const titleResources = useThreadTitleMentionResources();
+  const { data: pluginList } = usePluginList({ enabled: true });
+  const ownerPluginsById = useMemo(
+    () =>
+      new Map(
+        (pluginList?.plugins ?? []).map((plugin) => [
+          plugin.id,
+          { id: plugin.id, name: plugin.name ?? plugin.id, icon: plugin.icon },
+        ]),
+      ),
+    [pluginList],
+  );
 
   return useMemo<PluginSidebarThreadsState>(() => {
     if (data === undefined) {
@@ -188,7 +200,14 @@ export function useSidebarThreads(
         name: project.name,
         icon: project.icon,
         isPersonal: project.id === PERSONAL_PROJECT_ID,
-        experimental_ownerPluginId: project.ownerPluginId,
+        experimental_ownerPlugin:
+          project.ownerPluginId === null
+            ? null
+            : (ownerPluginsById.get(project.ownerPluginId) ?? {
+                id: project.ownerPluginId,
+                name: project.ownerPluginId,
+                icon: null,
+              }),
         href: getProjectComposeRoutePath(project.id),
         settingsHref: getSettingsProjectRoutePath(project.id),
       })),
@@ -198,6 +217,7 @@ export function useSidebarThreads(
     data,
     hostNamesById,
     hosts,
+    ownerPluginsById,
     query.isError,
     titleResources,
     active,
