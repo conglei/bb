@@ -1479,6 +1479,12 @@ export interface PluginSidebarProject {
   icon: string | null;
   /** True for the implicit personal project. */
   isPersonal: boolean;
+  /**
+   * The plugin whose workspace this project is (manifest
+   * `bb.experimental_workspace`), or null for a project the user owns.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_ownerPluginId: string | null;
   /** The app-relative URL of the project's compose screen. */
   href: string;
   /** The app-relative URL of the project's settings page. */

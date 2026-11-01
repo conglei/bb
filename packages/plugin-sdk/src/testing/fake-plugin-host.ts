@@ -113,6 +113,7 @@ import type {
   PluginSettings,
   ExperimentalPluginOwnerProject,
   ExperimentalPluginProjectScope,
+  ExperimentalPluginWorkspace,
   ExperimentalPluginProjectSettings,
   PluginSettingsValues,
   PluginStatusApi,
@@ -1076,6 +1077,22 @@ function createFakePluginHostInternal(
       projectScopeListeners.push(listener);
     },
   };
+  const experimental_workspace: ExperimentalPluginWorkspace = {
+    async get() {
+      assertLive();
+      return structuredClone(ownerProject.current);
+    },
+    onChange(listener) {
+      assertLive();
+      projectScopeListeners.push(listener);
+    },
+    async spawnThread() {
+      assertLive();
+      throw new Error(
+        "bb.experimental_workspace.spawnThread is not available in the fake plugin host; it needs a running bb server",
+      );
+    },
+  };
 
   // --- http ---
   const httpRoutes: FakeHttpRouteRecord[] = [];
@@ -1839,6 +1856,7 @@ function createFakePluginHostInternal(
     settings,
     experimental_projectSettings,
     experimental_projectScope,
+    experimental_workspace,
     storage,
     http,
     rpc,

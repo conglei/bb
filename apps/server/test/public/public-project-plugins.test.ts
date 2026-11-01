@@ -153,7 +153,7 @@ describe("project plugin routes", () => {
     });
   });
 
-  it("moves a single-scope plugin between projects and reports the owner to both", async () => {
+  it("adopts and releases a plugin workspace through the plugin routes", async () => {
     await withTestHarness(async (harness) => {
       await harness.pluginService.installPath(
         await writePlugin("bb-plugin-master", undefined, "single"),
@@ -179,7 +179,17 @@ describe("project plugin routes", () => {
         readJson(
           await harness.app.request(`/api/v1/projects/${projectId}/plugins`),
         );
+      const workspace = (suffix: string, body?: unknown) =>
+        harness.app.request(`/api/v1/plugins/master/workspace${suffix}`, {
+          method: suffix === "" ? "GET" : "POST",
+          headers: { "content-type": "application/json" },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        });
 
+      expect(await readJson(await workspace(""))).toEqual({
+        ok: true,
+        workspace: null,
+      });
       expect(await list(projectA.id)).toEqual([
         expect.objectContaining({
           pluginId: "master",
@@ -191,9 +201,26 @@ describe("project plugin routes", () => {
         }),
       ]);
 
-      const onA = await put(projectA.id, true);
-      expect(onA.status).toBe(200);
-      expect(await readJson(onA)).toEqual([
+      await put(projectB.id, true);
+      const adopted = await workspace("/adopt", { projectId: projectA.id });
+      expect(adopted.status).toBe(200);
+      expect(await readJson(adopted)).toEqual({
+        ok: true,
+        workspace: expect.objectContaining({
+          id: projectA.id,
+          ownerKind: "plugin",
+          ownerPluginId: "master",
+        }),
+      });
+      expect(await list(projectA.id)).toEqual([
+        expect.objectContaining({
+          enabled: true,
+          source: "default",
+          ownerProjectId: projectA.id,
+          ownerProjectName: "Alpha",
+        }),
+      ]);
+      expect(await list(projectB.id)).toEqual([
         expect.objectContaining({
           enabled: true,
           source: "project",
@@ -202,27 +229,33 @@ describe("project plugin routes", () => {
         }),
       ]);
 
-      const movedToB = await put(projectB.id, true);
-      expect(await readJson(movedToB)).toEqual([
-        expect.objectContaining({
-          enabled: true,
-          source: "project",
-          ownerProjectId: projectB.id,
-          ownerProjectName: "Beta",
-        }),
-      ]);
+      const taken = await harness.app.request(
+        "/api/v1/plugins/other/workspace/adopt",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ projectId: projectA.id }),
+        },
+      );
+      expect(taken.status).toBe(404);
+
+      const projects = await readJson(
+        await harness.app.request("/api/v1/projects?owner=plugin"),
+      );
+      expect(projects).toEqual([expect.objectContaining({ id: projectA.id })]);
+
+      await put(projectA.id, false);
       expect(await list(projectA.id)).toEqual([
-        expect.objectContaining({
-          enabled: false,
-          source: "default",
-          ownerProjectId: projectB.id,
-          ownerProjectName: "Beta",
-        }),
+        expect.objectContaining({ enabled: true, ownerProjectId: projectA.id }),
       ]);
 
-      await put(projectB.id, false);
+      const released = await workspace("/release");
+      expect(await readJson(released)).toEqual({ ok: true, workspace: null });
       expect(await list(projectA.id)).toEqual([
         expect.objectContaining({ enabled: false, ownerProjectId: null }),
+      ]);
+      expect(await list(projectB.id)).toEqual([
+        expect.objectContaining({ enabled: true, ownerProjectId: null }),
       ]);
     });
   });

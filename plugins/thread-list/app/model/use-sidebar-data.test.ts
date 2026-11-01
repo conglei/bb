@@ -14,6 +14,7 @@ describe("buildSidebarData", () => {
         name: "A",
         icon: null,
         isPersonal: false,
+        experimental_ownerPluginId: null,
         href: "/projects/proj_a",
         settingsHref: "/projects/proj_a/settings",
       },
@@ -22,6 +23,7 @@ describe("buildSidebarData", () => {
         name: "Personal",
         icon: null,
         isPersonal: true,
+        experimental_ownerPluginId: null,
         href: "/projects/proj_me",
         settingsHref: "/projects/proj_me/settings",
       },
@@ -64,6 +66,7 @@ describe("buildSidebarData", () => {
       href: "/projects/proj_a",
       settingsHref: "/projects/proj_a/settings",
       isPersonal: false,
+      experimental_ownerPluginId: null,
     });
     expect(data.personalProject?.id).toBe("proj_me");
     expect([...data.hostsById.entries()]).toEqual([
@@ -87,6 +90,7 @@ describe("buildSidebarData structural sharing", () => {
       name: "A",
       icon: null,
       isPersonal: false,
+      experimental_ownerPluginId: null,
       href: "/a",
       settingsHref: "/a/s",
     },
@@ -95,6 +99,7 @@ describe("buildSidebarData structural sharing", () => {
       name: "B",
       icon: null,
       isPersonal: false,
+      experimental_ownerPluginId: null,
       href: "/b",
       settingsHref: "/b/s",
     },

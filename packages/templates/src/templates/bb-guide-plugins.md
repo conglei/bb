@@ -79,6 +79,11 @@ under `<bb-data-dir>/plugins/<id>/` (SQLite database, secrets, logs).
   bb plugin config <id> --project <projectId> [set <key> <value> | unset <key>]
                                  The same for the plugin's per-project
                                  settings, stored for that project only
+  bb plugin workspace <id> [show | adopt <projectId> | release]
+                                 Show the project bb owns for a plugin that
+                                 declares bb.experimental_workspace, make an
+                                 existing project its workspace, or hand the
+                                 workspace back to you
   bb plugin logs <id> [-n N] [-f]  Print (or follow) a plugin's log
   bb plugin run <id> [args...]   Run a plugin command explicitly (also works
                                  when a core command owns its name)

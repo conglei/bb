@@ -32,6 +32,7 @@ import { signalRequestArgs, type CreateSdkAreaArgs } from "./common.js";
 export interface ProjectListArgs {
   include?: ProjectListQuery["include"];
   includePersonal?: boolean;
+  owner?: ProjectListQuery["owner"];
   signal?: AbortSignal;
 }
 
@@ -304,6 +305,7 @@ function projectListQuery(input: ProjectListArgs): ProjectListQuery {
     ...(input.includePersonal === undefined
       ? {}
       : { includePersonal: input.includePersonal ? "true" : "false" }),
+    ...(input.owner === undefined ? {} : { owner: input.owner }),
   };
 }
 

@@ -788,6 +788,7 @@ export function createApp(
     machineEnrollments: getMachineEnrollmentService(deps),
     db: deps.db,
     hub: deps.hub,
+    dbNotifier: deps.hub,
     logger: deps.logger,
     telemetry: deps.telemetry,
     pendingInteractions: deps.pendingInteractions,

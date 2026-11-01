@@ -38,6 +38,7 @@ import type {
   ThreadEventScopeKind,
   ThreadEventType,
   ProjectKind,
+  ProjectOwnerKind,
 } from "@bb/domain";
 import type { RetainedEventOutputPath } from "./retained-event-output.js";
 
@@ -159,6 +160,11 @@ export const projects = sqliteTable(
     name: text("name").notNull(),
     icon: text("icon"),
     gitRemoteUrl: text("git_remote_url"),
+    ownerKind: text("owner_kind")
+      .$type<ProjectOwnerKind>()
+      .notNull()
+      .default("user"),
+    ownerPluginId: text("owner_plugin_id"),
     sortKey: text("sort_key").notNull().default("V"),
     deletedAt: integer("deleted_at"),
     createdAt: integer("created_at").notNull(),
@@ -171,6 +177,9 @@ export const projects = sqliteTable(
     uniqueIndex("projects_personal_singleton_idx")
       .on(table.kind)
       .where(sql`${table.kind} = 'personal'`),
+    uniqueIndex("projects_owner_plugin_idx")
+      .on(table.ownerPluginId)
+      .where(sql`${table.ownerKind} = 'plugin' AND ${table.deletedAt} IS NULL`),
   ],
 );
 

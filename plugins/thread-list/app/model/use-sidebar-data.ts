@@ -17,6 +17,7 @@ export interface SidebarProject {
   href: string;
   settingsHref: string;
   isPersonal: boolean;
+  experimental_ownerPluginId: string | null;
   threads: SidebarThread[];
 }
 
@@ -111,6 +112,7 @@ export function buildSidebarData(
       href: project.href,
       settingsHref: project.settingsHref,
       isPersonal: project.isPersonal,
+      experimental_ownerPluginId: project.experimental_ownerPluginId ?? null,
       threads:
         before !== undefined && sameElements(before.threads, bucket)
           ? before.threads

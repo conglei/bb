@@ -201,6 +201,8 @@ export function makeMessageDispatchHookContext(
       name: "Test project",
       icon: null,
       gitRemoteUrl: null,
+      ownerKind: "user",
+      ownerPluginId: null,
       createdAt: 0,
       updatedAt: 0,
     },

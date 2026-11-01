@@ -2522,73 +2522,111 @@ Docs: `quickstart.md` (manifest), `frontend-core-slots.md`
 4. **Cache scope.** The server cache is per process and cleared on writes and
    plugin removal; confirm nothing else writes the table.
 
-## Manifest `bb.experimental_projectScope`
+## Manifest `bb.experimental_workspace` and plugin-owned projects
 
-`"any" | "single"`, default `"any"`. `"single"` makes the plugin project-bound:
-it is on in at most one project, its owner, and off everywhere else. The
-manifest reader forces `projectDefault` to `"off"` for it and rejects a
-manifest that also sets `experimental_projectDefault: "on"`. The owner is the
-single `project_plugin_states` row with `enabled = true` for the plugin
-(`getPluginOwnerProjectId` in
-`apps/server/src/services/plugins/project-plugin-scope.ts`). Enabling the
-plugin in another project through any write path (`PUT
-/projects/:id/plugins/:pluginId`, `sdk.projects.plugins.set`, `bb project
-plugins enable`, the project settings "Plugins" section) deletes every other
-project's row first, so the write is a move; it invalidates the scope cache
-and publishes `project-plugins-changed` for the new owner and the previous
-one. `enabled: false` or `null` on the owner clears the row (no owner);
-either on a non-owner only clears that project's row.
-`InstalledPlugin.projectScope` and `ProjectPluginEntry.scope`,
-`ownerProjectId`, `ownerProjectName` surface it to clients; the CLI `enable`
-output names the previous owner. Core has no `"single"` plugin; the Kept
-plugin is the first consumer.
+`{ seed?: string, name?: string }`, optional. A plugin that declares it gets
+a **workspace**: a `projects` row whose `owner_kind` is `plugin` and whose
+`owner_plugin_id` is the plugin (`packages/db/src/schema.ts`; migration
+`0151_project_owner`; a partial unique index keeps one live workspace per
+plugin). Every project people create keeps `owner_kind = 'user'`.
+`ensurePluginWorkspace` (`apps/server/src/services/plugins/plugin-workspaces.ts`)
+runs after each successful plugin load: when no workspace exists it creates
+`<dataDir>/plugins/<id>/workspace` on the bb server's own host (the host id
+in the data dir's host-id file; provisioning is deferred with a warning
+until that host is enrolled), copies `seed` into it once (the seed is never
+re-applied), and inserts the project with a `local_path` source there. A
+`"single"`-scope plugin without `experimental_workspace` is read as
+`experimental_workspace: {}`; when it has no workspace but one project
+already has it enabled, that project is adopted (one row update) instead of
+provisioning a new folder. The owner is always enabled in its workspace
+(`projectPluginFilter`), state-row writes for the owner there are ignored,
+and `"single"` no longer moves enablement between projects. The workspace
+never retires with the plugin: disabling or removing the plugin leaves the
+project and its folder in place.
+
+Routes: `GET /plugins/:id/workspace`, `POST /plugins/:id/workspace/adopt`
+(`{ projectId }`, 404 unknown project, 409 another plugin's workspace) and
+`POST /plugins/:id/workspace/release`, all through `setPluginWorkspaceOwner`
+in `project-plugin-scope.ts`, which fires the plugin's `onChange`. SDK
+`plugins.getWorkspace` / `adoptWorkspace` / `releaseWorkspace`; CLI `bb
+plugin workspace <id> [show | adopt <projectId> | release]`. `GET
+/projects?owner=user|plugin`, `sdk.projects.list({ owner })` and `bb project
+list --owner` filter by owner; `ProjectResponse` carries `ownerKind` and
+`ownerPluginId`. The composer's project picker hides plugin workspaces
+unless one is selected; the thread-list sidebar lists them after the user's
+projects through `PluginSidebarProject.experimental_ownerPluginId`. The
+Kept plugin and the plugin-authoring flow are the first consumers.
 
 Docs: `quickstart.md` (manifest), `backend-foundation.md`
-(`bb.experimental_projectScope`).
+(`bb.experimental_workspace`), `bb-guide-plugins.md`, `bb-guide-projects.md`.
 
 **Audit before stabilizing.**
 
-1. **Scope changes across versions.** A plugin that goes from `"any"` to
-   `"single"` with several enabled rows keeps them until the next write; the
-   most recently updated row counts as the owner. Decide whether an update
-   should normalize the rows.
-2. **Owner deletion.** Deleting the owning project cascades its row away
-   without an `onChange`; decide whether the plugin should hear about it.
-3. **Personal project.** The personal project can own a single-scope plugin
-   although it has no project page; confirm that is intended.
+1. **Seed upgrades.** The seed is copied once; decide whether a later
+   plugin version should offer to re-seed or notify when the seed changed.
+2. **Sidebar placement.** Workspaces are sorted last in the project list;
+   decide whether they belong under the plugin's own sidebar section instead
+   and whether the project picker should offer them behind a toggle.
+3. **Owner deletion.** Deleting the workspace project leaves the plugin
+   without one until its next load re-provisions an empty folder; decide
+   whether that should be refused or confirmed.
+4. **Remote servers.** The workspace lives on the server's own host; decide
+   what a server with no local host should do beyond deferring.
+5. **Settings UI.** The project settings "Plugins" switch still renders for
+   the owner; it should read as fixed on.
+
+## `bb.experimental_workspace` (`@get-bb/plugin-sdk`)
+
+`bb.experimental_workspace.get()` returns the plugin's workspace as
+`{ projectId, name, localPaths } | null` (`ExperimentalPluginOwnerProject`),
+`localPaths` being its `local_path` sources on the bb server's own machine.
+`onChange((next, previous) => void)` fires on provisioning, adoption, move
+and release. `spawnThread(args)` (`ExperimentalPluginWorkspaceSpawnArgs`:
+`bb.sdk.threads.spawn` minus `projectId`, `environment` and `input`, with
+`prompt`) starts a thread in the workspace's checkout through an unmanaged
+host environment at `localPaths[0]`, throwing while there is no workspace
+or no checkout on that host; it is bind-gated like `bb.sdk`. The fake plugin
+host serves `get` and `onChange` from the owner project its options set and
+rejects `spawnThread`. `bb.experimental_projectScope.get` / `onChange` are
+the older names and return the same workspace.
+
+**Audit before stabilizing.**
+
+1. **Environment choice.** `spawnThread` always runs in place; decide
+   whether a worktree or provider environment should be selectable.
+2. **Merging with `experimental_projectScope`.** Keep one name; the
+   `"single"` alias and `experimental_projectScope` go when the Kept plugin
+   has moved to `experimental_workspace`.
+
+## Manifest `bb.experimental_projectScope`
+
+`"any" | "single"`, default `"any"`. `"single"` is the older spelling of
+`experimental_workspace: {}` (see that entry): the manifest reader forces
+`projectDefault` to `"off"` for it and rejects a manifest that also sets
+`experimental_projectDefault: "on"`. `getPluginOwnerProjectId` in
+`apps/server/src/services/plugins/project-plugin-scope.ts` reads the owner
+from the project's `owner_plugin_id`, falling back for a `"single"` plugin to
+its one enabled `project_plugin_states` row until adoption runs.
+`InstalledPlugin.projectScope` and `ProjectPluginEntry.scope`,
+`ownerProjectId`, `ownerProjectName` surface it to clients.
+
+**Audit before stabilizing.** Scheduled for removal once the Kept plugin
+declares `experimental_workspace`.
 
 ## `bb.experimental_projectScope` (`@get-bb/plugin-sdk`)
 
-`bb.experimental_projectScope.get()` returns the owning project of a
-`bb.experimental_projectScope: "single"` plugin as
-`{ projectId, name, localPaths } | null` (`ExperimentalPluginOwnerProject`),
-`null` while it is off everywhere and always `null` for an `"any"` plugin.
-`localPaths` are the project's `local_path` sources whose host is the bb
-server's own machine, read from the `host-id` file in the server data dir
-(`readPrimaryHostIdFromDataDir`); the list is empty when that host is not
-enrolled or the project has no checkout there. `onChange((next, previous) =>
-…)` fires once per owner change through any write path: turned on (`previous`
-is `null`), moved, or turned off (`next` is `null`). The scope service calls
-`PluginService.projectOwnerChanged`, which forwards to the loaded plugin's
-listeners with both projects resolved; listener errors are logged, not
-thrown. `get()` is load-safe. The fake host exposes
-`experimental_ownerProject` (option) and
-`harness.behavior.experimental_setOwnerProject(project | null)` (driver);
-the owner survives `lifecycle.reload`. Core has no caller; the Kept plugin
-is the first consumer.
+The older name of `bb.experimental_workspace.get` and `onChange`; same
+values. Scheduled for removal with the manifest field.
 
-Docs: `backend-foundation.md`, `testing.md`.
+## `PluginSidebarProject.experimental_ownerPluginId` (`@get-bb/plugin-sdk/app`)
 
-**Audit before stabilizing.**
+The plugin whose workspace the sidebar project is, or `null` for a
+user-owned project; mapped from `ProjectResponse.ownerPluginId` in
+`apps/app/src/lib/plugin-sidebar-hooks.ts`. The thread-list plugin sorts
+plugin workspaces after user projects with it.
 
-1. **Local paths.** `localPaths` are the only host-specific field; decide
-   whether the owner should carry every source with its host id instead, so
-   a plugin on a remote host can find its checkout too.
-2. **Owner deletion.** See the manifest entry: a deleted owner cascades
-   without `onChange`.
-3. **Startup.** A plugin learns its owner only by calling `get()`; decide
-   whether the factory should receive it or `onChange` should fire once at
-   load.
+**Audit before stabilizing.** Decide whether the sidebar should expose the
+owner kind instead, and whether core should group these projects itself.
 
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 

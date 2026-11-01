@@ -65,6 +65,7 @@ Check backend, host, AI-service, and test imports here; read the backend referen
 - `ExperimentalPermissionModePickerProps`
 - `ExperimentalPluginFixedTabReference`
 - `ExperimentalPluginOwnerProject`, `ExperimentalPluginProjectScope`
+- `ExperimentalPluginWorkspace`, `ExperimentalPluginWorkspaceSpawnArgs`
 - `ExperimentalPluginProjectSettings`, `ExperimentalPluginProjectSettingsHandle`
 - `ExperimentalPluginRpcCaller`
 - `ExperimentalPluginRpcHandlerContext`

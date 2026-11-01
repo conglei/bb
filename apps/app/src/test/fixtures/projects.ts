@@ -13,6 +13,8 @@ export function makeProjectResponse(
     name: "Test project",
     icon: null,
     gitRemoteUrl: null,
+    ownerKind: "user",
+    ownerPluginId: null,
     sources: [],
     createdAt: 0,
     updatedAt: 0,

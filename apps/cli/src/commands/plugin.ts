@@ -1997,6 +1997,55 @@ export function registerPluginCommands(
     );
 
   plugin
+    .command("workspace <id> [action] [projectId]")
+    .description(
+      "Show the workspace bb owns for a plugin (bb.experimental_workspace), or change it: workspace <id> adopt <projectId> | workspace <id> release",
+    )
+    .option("--json", "Output JSON")
+    .action(
+      action(
+        async (
+          id: string,
+          actionName: string | undefined,
+          projectId: string | undefined,
+          opts: JsonOutputOptions,
+          command: Command,
+        ) => {
+          const sdk = createCliBbSdk(getUrl());
+          let workspace: Awaited<ReturnType<typeof sdk.plugins.getWorkspace>>;
+          if (actionName === undefined || actionName === "show") {
+            workspace = await sdk.plugins.getWorkspace({ pluginId: id });
+          } else if (actionName === "adopt") {
+            if (projectId === undefined) {
+              command.error("error: workspace <id> adopt needs a project id");
+            }
+            workspace = await sdk.plugins.adoptWorkspace({
+              pluginId: id,
+              projectId,
+            });
+          } else if (actionName === "release") {
+            workspace = await sdk.plugins.releaseWorkspace({ pluginId: id });
+          } else {
+            command.error(
+              `error: unknown action '${actionName}'. Use show, adopt <projectId> or release`,
+            );
+          }
+          if (outputJson(opts, { workspace })) return;
+          if (workspace === null) {
+            console.log(`Plugin ${id} has no workspace`);
+            return;
+          }
+          const path = workspace.sources.find(
+            (source) => source.type === "local_path",
+          )?.path;
+          console.log(
+            `${workspace.name} (${workspace.id})${path ? ` at ${path}` : ""}`,
+          );
+        },
+      ),
+    );
+
+  plugin
     .command("token <id>")
     .description(
       'Print the plugin\'s HTTP token (for routes registered with auth: "token")',

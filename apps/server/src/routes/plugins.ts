@@ -27,6 +27,13 @@ import type {
   PluginWebSocketRouteRecord,
 } from "../services/plugins/plugin-api.js";
 import { PluginSettingsValidationError } from "../services/plugins/plugin-settings.js";
+import { getPluginOwnedProject, getProject } from "@bb/db";
+import { pluginWorkspaceAdoptRequestSchema } from "@bb/server-contract";
+import {
+  isProjectScopedPluginKnown,
+  setPluginWorkspaceOwner,
+} from "../services/plugins/project-plugin-scope.js";
+import { buildProjectResponsesFromRows } from "./projects.js";
 import { UnknownProjectError } from "../services/plugins/plugin-project-settings.js";
 import { PLUGIN_RPC_CALLER_HEADER } from "../services/plugins/plugin-rpc-caller.js";
 import type { PluginInstallJobs } from "../services/plugins/plugin-install-jobs.js";
@@ -58,6 +65,7 @@ import {
 interface PluginRoutesDeps {
   config: Pick<ServerRuntimeConfig, "serverPort" | "appUrl" | "devAppPort">;
   db: import("@bb/db").DbConnection;
+  hub: import("@bb/db").DbNotifier;
 }
 
 type WireAuthProblem = BrowserRequestProblem | { status: 401; error: string };
@@ -891,6 +899,84 @@ export function registerPluginRoutes(
       }
       throw error;
     }
+  });
+
+  function workspaceResponse(pluginId: string) {
+    const project = getPluginOwnedProject(deps.db, pluginId);
+    return {
+      ok: true as const,
+      workspace:
+        project === null
+          ? null
+          : (buildProjectResponsesFromRows(deps, [project])[0] ?? null),
+    };
+  }
+
+  function requireKnownPlugin(context: Context, id: string) {
+    if (!isProjectScopedPluginKnown(id)) {
+      return context.json(
+        { ok: false, error: `unknown plugin "${id}" or plugin is not running` },
+        404,
+      );
+    }
+    return null;
+  }
+
+  app.get("/plugins/:id/workspace", (context) => {
+    const id = context.req.param("id");
+    const refused = requireKnownPlugin(context, id);
+    if (refused) return refused;
+    return context.json(workspaceResponse(id));
+  });
+
+  app.post("/plugins/:id/workspace/adopt", async (context) => {
+    const id = context.req.param("id");
+    const refused = requireKnownPlugin(context, id);
+    if (refused) return refused;
+    const json: unknown = await context.req.json().catch(() => null);
+    const body = pluginWorkspaceAdoptRequestSchema.safeParse(json);
+    if (!body.success) {
+      return context.json(
+        { ok: false, error: "expected { projectId: string }" },
+        400,
+      );
+    }
+    const project = getProject(deps.db, body.data.projectId);
+    if (
+      project === null ||
+      project.deletedAt !== null ||
+      project.kind !== "standard"
+    ) {
+      return context.json(
+        { ok: false, error: `unknown project "${body.data.projectId}"` },
+        404,
+      );
+    }
+    if (project.ownerKind === "plugin" && project.ownerPluginId !== id) {
+      return context.json(
+        {
+          ok: false,
+          error: `project "${project.id}" is the workspace of plugin "${project.ownerPluginId}"`,
+        },
+        409,
+      );
+    }
+    setPluginWorkspaceOwner(deps.db, deps.hub, {
+      pluginId: id,
+      projectId: project.id,
+    });
+    return context.json(workspaceResponse(id));
+  });
+
+  app.post("/plugins/:id/workspace/release", (context) => {
+    const id = context.req.param("id");
+    const refused = requireKnownPlugin(context, id);
+    if (refused) return refused;
+    setPluginWorkspaceOwner(deps.db, deps.hub, {
+      pluginId: id,
+      projectId: null,
+    });
+    return context.json(workspaceResponse(id));
   });
 
   app.delete("/plugins/:id", async (context) => {

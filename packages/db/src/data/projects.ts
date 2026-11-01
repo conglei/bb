@@ -21,9 +21,19 @@ export interface CreateProjectLocalPathSourceInput {
 
 export type CreateProjectSourceInput = CreateProjectLocalPathSourceInput;
 
+export interface PluginProjectOwner {
+  kind: "plugin";
+  pluginId: string;
+}
+
 export interface CreateProjectInput {
   name: string;
   source: CreateProjectSourceInput;
+  owner?: PluginProjectOwner;
+}
+
+export interface ListPublicProjectsOptions {
+  owner?: "user" | "plugin";
 }
 
 export type ProjectRow = typeof projects.$inferSelect;
@@ -74,13 +84,61 @@ function publicProjectFilter() {
   return and(eq(projects.kind, "standard"), isNull(projects.deletedAt));
 }
 
-export function listPublicProjects(db: DbQueryConnection): ProjectRow[] {
+export function listPublicProjects(
+  db: DbQueryConnection,
+  options: ListPublicProjectsOptions = {},
+): ProjectRow[] {
   return db
     .select()
     .from(projects)
-    .where(publicProjectFilter())
+    .where(
+      options.owner === undefined
+        ? publicProjectFilter()
+        : and(publicProjectFilter(), eq(projects.ownerKind, options.owner)),
+    )
     .orderBy(asc(projects.sortKey), asc(projects.id))
     .all();
+}
+
+export function getPluginOwnedProject(
+  db: DbQueryConnection,
+  pluginId: string,
+): ProjectRow | null {
+  return (
+    db
+      .select()
+      .from(projects)
+      .where(
+        and(
+          publicProjectFilter(),
+          eq(projects.ownerKind, "plugin"),
+          eq(projects.ownerPluginId, pluginId),
+        ),
+      )
+      .get() ?? null
+  );
+}
+
+export function setProjectOwner(
+  db: DbConnection,
+  notifier: DbNotifier,
+  args: { projectId: string; owner: PluginProjectOwner | { kind: "user" } },
+): ProjectRow | null {
+  const updated =
+    db
+      .update(projects)
+      .set({
+        ownerKind: args.owner.kind,
+        ownerPluginId: args.owner.kind === "plugin" ? args.owner.pluginId : null,
+        updatedAt: Date.now(),
+      })
+      .where(and(eq(projects.id, args.projectId), publicProjectFilter()))
+      .returning()
+      .get() ?? null;
+  if (updated) {
+    notifier.notifyProject(updated.id, ["project-updated"]);
+  }
+  return updated;
 }
 
 function getLastPublicProject(db: DbQueryConnection): ProjectRow | null {
@@ -151,6 +209,8 @@ function insertProject(tx: DbTransaction, input: CreateProjectInput) {
     .values({
       id: projectId,
       name: input.name,
+      ownerKind: input.owner?.kind ?? "user",
+      ownerPluginId: input.owner?.pluginId ?? null,
       sortKey,
       createdAt: now,
       updatedAt: now,

@@ -82,6 +82,16 @@ export type PluginProjectDefault = z.infer<typeof pluginProjectDefaultSchema>;
 export const pluginProjectScopeSchema = z.enum(["any", "single"]);
 export type PluginProjectScope = z.infer<typeof pluginProjectScopeSchema>;
 
+export const pluginWorkspaceManifestSchema = z
+  .object({
+    seed: requiredManifestString.optional(),
+    name: requiredManifestString.optional(),
+  })
+  .strict();
+export type PluginWorkspaceManifest = z.infer<
+  typeof pluginWorkspaceManifestSchema
+>;
+
 const pluginBbManifestSchema = z
   .object({
     name: requiredManifestString,
@@ -100,6 +110,7 @@ const pluginBbManifestSchema = z
       .optional(),
     experimental_projectDefault: pluginProjectDefaultSchema.optional(),
     experimental_projectScope: pluginProjectScopeSchema.optional(),
+    experimental_workspace: pluginWorkspaceManifestSchema.optional(),
     server: requiredManifestString,
     app: requiredManifestString.optional(),
     host: requiredManifestString.optional(),
@@ -131,7 +142,7 @@ const pluginBbManifestSchema = z
         code: "custom",
         path: ["experimental_projectDefault"],
         message:
-          'experimental_projectScope "single" binds the plugin to one project, so it is off in every other project; drop experimental_projectDefault or set it to "off"',
+          'experimental_projectScope "single" gives the plugin a workspace of its own and defaults it off in other projects; drop experimental_projectDefault or set it to "off"',
       });
     }
   });

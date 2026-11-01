@@ -23,6 +23,7 @@ import {
 
 interface ProjectListCommandOptions {
   includePersonal?: boolean;
+  owner?: string;
   json?: boolean;
 }
 
@@ -352,12 +353,28 @@ export function registerProjectCommands(
     .command("list")
     .description("List projects")
     .option("--include-personal", "Include the personal project")
+    .option(
+      "--owner <kind>",
+      "Only projects with this owner: user (projects you created) or plugin (workspaces bb provisioned for a plugin)",
+    )
     .option("--json", "Print machine-readable JSON output")
     .action(
-      action(async (opts: ProjectListCommandOptions) => {
+      action(async (opts: ProjectListCommandOptions, command: Command) => {
+        if (
+          opts.owner !== undefined &&
+          opts.owner !== "user" &&
+          opts.owner !== "plugin"
+        ) {
+          command.error(
+            "error: option '--owner <kind>' must be user or plugin",
+          );
+        }
         const sdk = createCliBbSdk(getUrl());
         const projects = await sdk.projects.list({
           includePersonal: opts.includePersonal,
+          ...(opts.owner === "user" || opts.owner === "plugin"
+            ? { owner: opts.owner }
+            : {}),
         });
         if (outputJson(opts, projects)) return;
         if (projects.length === 0) {

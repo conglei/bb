@@ -41,6 +41,7 @@ export interface PluginManifest {
   providerCatalog: Array<{ id: string; displayName: string }>;
   projectDefault: PluginProjectDefault;
   projectScope: PluginProjectScope;
+  workspace: { seedPath: string | null; name: string } | null;
   serverEntry: string;
   appEntry: string | undefined;
   hostEntry: string | undefined;
@@ -244,6 +245,22 @@ export async function readPluginManifest(
       bb.experimental_projectScope === "single"
         ? "off"
         : (bb.experimental_projectDefault ?? "on"),
+    workspace:
+      bb.experimental_workspace !== undefined
+        ? {
+            seedPath:
+              bb.experimental_workspace.seed === undefined
+                ? null
+                : resolveManifestPath(
+                    rootDir,
+                    bb.experimental_workspace.seed,
+                    "bb.experimental_workspace.seed",
+                  ),
+            name: bb.experimental_workspace.name ?? bb.name,
+          }
+        : bb.experimental_projectScope === "single"
+          ? { seedPath: null, name: bb.name }
+          : null,
     serverEntry,
     appEntry: bb.app
       ? resolveManifestPath(rootDir, bb.app, "bb.app")

@@ -152,24 +152,33 @@ rows. `onChange` fires for every write path, only when that project's
 effective values changed. Rows are deleted with the project and when the
 plugin is removed.
 
-### bb.experimental_projectScope
+### bb.experimental_workspace
 
-For a plugin whose manifest sets `bb.experimental_projectScope: "single"`
-(see quickstart.md), the plugin is on in at most one project, its owner.
-`bb.experimental_projectScope.get()` returns that project or `null` (types
-`ExperimentalPluginProjectScope`, `ExperimentalPluginOwnerProject`):
+For a plugin whose manifest declares `bb.experimental_workspace` (see
+quickstart.md), bb owns a project for the plugin: its workspace.
+`bb.experimental_workspace.get()` returns it or `null` (types
+`ExperimentalPluginWorkspace`, `ExperimentalPluginOwnerProject`):
 
 ```ts
-const owner = await bb.experimental_projectScope.get(); // load-safe; null while off everywhere, always null for "any" plugins
-// owner: { projectId, name, localPaths } — localPaths are the project's checkouts on the bb server's own machine ([] elsewhere)
-bb.experimental_projectScope.onChange((next, previous) => {}); // turned on (previous null), moved, or turned off (next null)
+const home = await bb.experimental_workspace.get(); // load-safe; null until provisioned (the server's own host must be enrolled)
+// home: { projectId, name, localPaths } — localPaths are the workspace checkouts on the bb server's own machine ([] elsewhere)
+bb.experimental_workspace.onChange((next, previous) => {}); // provisioned, adopted, moved (bb plugin workspace adopt) or released
+const { thread } = await bb.experimental_workspace.spawnThread({
+  prompt: "Run the inbox.",
+  title: "Inbox",
+}); // a thread in the workspace checkout; other bb.sdk.threads.spawn fields pass through
 ```
 
-Turning the plugin on in another project moves it there: the previous owner
-is turned off, both projects get `project-plugins-changed`, and `onChange`
-fires once with both. Use the owner for state the plugin keeps once (the
-"master" project it works from), and `bb.experimental_projectSettings` for
-values every project may hold.
+The plugin is always on in its workspace, so its tools, instructions and
+skills reach threads there without a project switch; the workspace's own
+`CLAUDE.md` and `.bb/skills` reach those threads the way any checkout's do.
+Work the plugin does in other projects stays ordinary: enable the plugin
+there (`bb project plugins enable`) and spawn with `bb.sdk.threads.spawn({
+projectId })`. Keep ids, not paths: `storage.experimental_forProject(home.projectId)`
+and `experimental_projectSettings` take the workspace's project id.
+
+`bb.experimental_projectScope` is the older name for `get` and `onChange`
+and returns the same workspace.
 
 ### bb.storage
 

@@ -41,6 +41,7 @@ import {
   upsertPluginMarketplace,
   type DbConnection,
 } from "@bb/db";
+import { noopNotifier } from "@bb/db";
 import { createMigratedConnection } from "@bb/db/testing";
 import type { Logger } from "@bb/logger";
 import { registerPluginRoutes } from "../../../src/routes/plugins.js";
@@ -420,7 +421,7 @@ describe("plugin update service and routes", () => {
     registerPluginUpdateJobRoutes(app, updateJobs);
     registerPluginRoutes(
       app,
-      { config: { serverPort: 3334 }, db },
+      { config: { serverPort: 3334 }, db, hub: noopNotifier },
       service,
       createPluginInstallJobs({ notifyChanged: () => {} }),
       updateJobs,

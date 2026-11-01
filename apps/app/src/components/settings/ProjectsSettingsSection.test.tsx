@@ -341,6 +341,8 @@ describe("ProjectsSettingsSection", () => {
       name: "bb-next",
       icon: null,
       gitRemoteUrl: null,
+      ownerKind: "user",
+      ownerPluginId: null,
       createdAt: NOW,
       updatedAt: NOW,
       sources: [],

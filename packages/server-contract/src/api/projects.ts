@@ -11,6 +11,7 @@ import {
   threadListEntrySchema,
   gitBranchNameSchema,
   projectSourceCheckoutSchema,
+  projectOwnerKindSchema,
 } from "@bb/domain";
 import {
   rejectMultipleWorkspaceSelectors,
@@ -141,6 +142,12 @@ export const projectListQuerySchema = z.object({
     )
     .optional(),
   includePersonal: z.enum(["true", "false"]).optional(),
+  /**
+   * Restrict the list to projects with one owner kind: `user` for projects
+   * people created, `plugin` for workspaces bb provisioned for a plugin
+   * (`experimental_workspace`). Omitted: both.
+   */
+  owner: projectOwnerKindSchema.optional(),
 });
 export type ProjectListQuery = z.infer<typeof projectListQuerySchema>;
 
@@ -229,14 +236,13 @@ export const projectPluginEntrySchema = z.object({
    */
   hasProjectSettings: z.boolean().default(false),
   /**
-   * The manifest's `bb.experimental_projectScope`. A `"single"` plugin is on
-   * in at most one project, its owner; enabling it elsewhere moves it. Older
-   * servers omit it.
+   * The manifest's `bb.experimental_projectScope`; `"single"` is the older
+   * spelling of `bb.experimental_workspace`. Older servers omit it.
    */
   scope: z.enum(["any", "single"]).default("any"),
   /**
-   * For a `"single"` plugin, the project that currently owns it (`null` when
-   * it is off everywhere). Always `null` for an `"any"` plugin.
+   * The plugin's workspace project (`ownerPluginId` on a project), or `null`
+   * while the plugin owns none. The plugin is always enabled there.
    */
   ownerProjectId: z.string().nullable().default(null),
   /** The owner's display name, when `ownerProjectId` is set. */

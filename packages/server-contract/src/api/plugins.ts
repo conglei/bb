@@ -6,6 +6,7 @@ import {
   pluginMarketplaceCollectionPluginIdSchema,
 } from "@bb/domain";
 import { z } from "zod";
+import { projectResponseSchema } from "./projects.js";
 
 export const pluginRuntimeStatusSchema = z.enum([
   "starting",
@@ -254,10 +255,10 @@ export const installedPluginSchema = z.object({
    */
   projectDefault: z.enum(["on", "off"]).default("on"),
   /**
-   * The manifest's `bb.experimental_projectScope`: `"single"` binds the
-   * plugin to one owning project (it is off everywhere else); `"any"` lets
-   * each project turn it on. Older servers omit it, so a reader falls back
-   * to "any".
+   * The manifest's `bb.experimental_projectScope`: `"single"` is the older
+   * spelling of `bb.experimental_workspace`, so the plugin owns a workspace
+   * project and defaults to off elsewhere; `"any"` is every other plugin.
+   * Older servers omit it, so a reader falls back to "any".
    */
   projectScope: z.enum(["any", "single"]).default("any"),
   app: pluginAppStateSchema,
@@ -733,3 +734,23 @@ export type PublishedPluginRpcMethod = z.infer<
 export const pluginRpcDiscoveryResponseSchema = z.array(
   publishedPluginRpcMethodSchema,
 );
+
+/**
+ * The workspace bb owns for a plugin (manifest `bb.experimental_workspace`):
+ * the project whose `ownerPluginId` is the plugin, or `null` while none
+ * exists.
+ */
+export const pluginWorkspaceResponseSchema = z.object({
+  ok: z.literal(true),
+  workspace: projectResponseSchema.nullable(),
+});
+export type PluginWorkspaceResponse = z.infer<
+  typeof pluginWorkspaceResponseSchema
+>;
+
+export const pluginWorkspaceAdoptRequestSchema = z.object({
+  projectId: z.string().min(1),
+});
+export type PluginWorkspaceAdoptRequest = z.infer<
+  typeof pluginWorkspaceAdoptRequestSchema
+>;

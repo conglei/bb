@@ -29,6 +29,7 @@ import type {
   ThreadPluginMetadataArgs,
   ThreadPluginMetadataUpdateArgs,
   ThreadPluginMetadataResult,
+  ThreadSpawnArgs,
 } from "@bb/sdk";
 import type {
   ExecutionInputFieldSource,
@@ -220,8 +221,9 @@ export interface ExperimentalPluginProjectSettings {
 }
 
 /**
- * The project that owns a plugin whose manifest declares
- * `bb.experimental_projectScope: "single"`.
+ * The project a plugin owns: its workspace (manifest
+ * `bb.experimental_workspace`, or the older
+ * `bb.experimental_projectScope: "single"`).
  */
 export interface ExperimentalPluginOwnerProject {
   projectId: string;
@@ -235,20 +237,19 @@ export interface ExperimentalPluginOwnerProject {
 }
 
 /**
- * The owning project of a project-bound plugin. Experimental: see
- * docs/api_to_audit.md.
+ * The older name of `bb.experimental_workspace`'s `get` and `onChange`;
+ * same values. Experimental: see docs/api_to_audit.md.
  */
 export interface ExperimentalPluginProjectScope {
   /**
-   * The project that currently owns this plugin: the one project where a
-   * `"single"`-scope plugin is turned on. `null` while it is off everywhere,
-   * and always `null` for a plugin whose scope is `"any"`. Load-safe.
+   * The plugin's workspace project, or `null` while none exists. Always
+   * `null` for a plugin that declares neither `experimental_workspace` nor
+   * `experimental_projectScope: "single"`. Load-safe.
    */
   get(): Promise<ExperimentalPluginOwnerProject | null>;
   /**
-   * Fires after the owner changes through any write path: turned on in a
-   * project (`previous` is `null`), moved to another project, or turned off
-   * in the owner (`next` is `null`). Never fires for an `"any"` plugin.
+   * Fires when the workspace is provisioned, adopted, moved or released
+   * through any write path.
    */
   onChange(
     listener: (
@@ -256,6 +257,52 @@ export interface ExperimentalPluginProjectScope {
       previous: ExperimentalPluginOwnerProject | null,
     ) => void,
   ): void;
+}
+
+/**
+ * Arguments for `bb.experimental_workspace.spawnThread`: everything
+ * `bb.sdk.threads.spawn` takes except `projectId` and `environment`, which
+ * bb fills in from the plugin's workspace. `prompt` is the first message.
+ */
+export type ExperimentalPluginWorkspaceSpawnArgs = Omit<
+  ThreadSpawnArgs,
+  "projectId" | "environment" | "input" | "prompt"
+> & { prompt: string };
+
+/**
+ * The workspace bb owns on behalf of a plugin whose manifest declares
+ * `bb.experimental_workspace` (or the `experimental_projectScope: "single"`
+ * alias): a project whose owner is the plugin, provisioned at
+ * `<dataDir>/plugins/<id>/workspace` on the bb server's own host the first
+ * time the plugin loads, or adopted from the `"single"` owner it had before.
+ * Experimental: see docs/api_to_audit.md.
+ */
+export interface ExperimentalPluginWorkspace {
+  /**
+   * The plugin's workspace project, or `null` while none exists: the
+   * manifest declares no workspace, or the server's own host is not enrolled
+   * yet so provisioning is waiting for the next load. Load-safe.
+   */
+  get(): Promise<ExperimentalPluginOwnerProject | null>;
+  /**
+   * Fires when the workspace is provisioned, adopted, moved or released
+   * through any write path.
+   */
+  onChange(
+    listener: (
+      next: ExperimentalPluginOwnerProject | null,
+      previous: ExperimentalPluginOwnerProject | null,
+    ) => void,
+  ): void;
+  /**
+   * Start a thread in the workspace's checkout on the server's own host, the
+   * same way `bb.sdk.threads.spawn` would with the workspace's project and an
+   * unmanaged environment at its path. Throws while `get()` is `null` or the
+   * workspace has no checkout on that host. Bind-gated like `bb.sdk`.
+   */
+  spawnThread(
+    args: ExperimentalPluginWorkspaceSpawnArgs,
+  ): ReturnType<PluginBbSdk["threads"]["spawn"]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -2338,6 +2385,11 @@ export interface BbPluginApi {
    * Experimental: see docs/api_to_audit.md.
    */
   readonly experimental_projectScope: ExperimentalPluginProjectScope;
+  /**
+   * The workspace bb owns for this plugin (manifest
+   * `bb.experimental_workspace`). Experimental: see docs/api_to_audit.md.
+   */
+  readonly experimental_workspace: ExperimentalPluginWorkspace;
   /** Namespaced KV + per-plugin database (design §4.3). */
   readonly storage: PluginStorage;
   /** HTTP routes under /api/v1/plugins/<id>/http/* (design §4.6). */
