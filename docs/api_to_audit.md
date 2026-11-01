@@ -2553,8 +2553,9 @@ plugin workspace <id> [show | adopt <projectId> | release]`. `GET
 /projects?owner=user|plugin`, `sdk.projects.list({ owner })` and `bb project
 list --owner` filter by owner; `ProjectResponse` carries `ownerKind` and
 `ownerPluginId`. The composer's project picker hides plugin workspaces
-unless one is selected; the thread-list sidebar lists them after the user's
-projects through `PluginSidebarProject.experimental_ownerPluginId`. The
+unless one is selected; the thread-list sidebar lists each after the user's
+projects as a heading with the plugin's icon and name through
+`PluginSidebarProject.experimental_ownerPlugin`. The
 Kept plugin and the plugin-authoring flow are the first consumers.
 
 Docs: `quickstart.md` (manifest), `backend-foundation.md`
@@ -2618,12 +2619,17 @@ declares `experimental_workspace`.
 The older name of `bb.experimental_workspace.get` and `onChange`; same
 values. Scheduled for removal with the manifest field.
 
-## `PluginSidebarProject.experimental_ownerPluginId` (`@get-bb/plugin-sdk/app`)
+## `PluginSidebarProject.experimental_ownerPlugin` (`@get-bb/plugin-sdk/app`)
 
-The plugin whose workspace the sidebar project is, or `null` for a
-user-owned project; mapped from `ProjectResponse.ownerPluginId` in
-`apps/app/src/lib/plugin-sidebar-hooks.ts`. The thread-list plugin sorts
-plugin workspaces after user projects with it.
+`{ id, name, icon } | null` (`ExperimentalSidebarProjectOwnerPlugin`): the
+plugin whose workspace the sidebar project is, with its display name and
+branding icon for `experimental_PluginIcon`, or `null` for a user-owned
+project; mapped from `ProjectResponse.ownerPluginId` and the installed
+plugin list in `apps/app/src/lib/plugin-sidebar-hooks.ts` (a plugin missing
+from that list falls back to its id as the name). The thread-list plugin
+renders plugin workspaces after the user's reorderable project sections, each
+as a heading with the plugin's icon and name and its threads underneath,
+outside the manual section order.
 
 **Audit before stabilizing.** Decide whether the sidebar should expose the
 owner kind instead, and whether core should group these projects itself.

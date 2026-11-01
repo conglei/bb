@@ -70,7 +70,7 @@ function renderCustomSections(pinned = false) {
             id: "proj_personal",
             name: "Personal",
             isPersonal: true,
-            experimental_ownerPluginId: null,
+            experimental_ownerPlugin: null,
           }),
         ],
         sections: [makeSection("sec_a", "Alpha"), makeSection("sec_b", "Beta")],

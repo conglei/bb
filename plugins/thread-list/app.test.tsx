@@ -35,7 +35,7 @@ const PROJECTS = [
     id: PERSONAL_PROJECT_ID,
     name: "Personal",
     isPersonal: true,
-    experimental_ownerPluginId: null,
+    experimental_ownerPlugin: null,
   }),
   makePluginProject({ id: "proj_app", name: "App" }),
   makePluginProject({ id: "proj_web", name: "Web" }),

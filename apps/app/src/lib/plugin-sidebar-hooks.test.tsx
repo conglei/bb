@@ -86,6 +86,9 @@ vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
   useSidebarNavigation: () => ({ data: state.data, isError: false }),
 }));
 
+vi.mock("@/hooks/queries/plugin-settings-queries", () => ({
+  usePluginList: () => ({ data: { plugins: [] } }),
+}));
 vi.mock("@/hooks/queries/host-queries", () => {
   const hosts: never[] = [];
   return { useHosts: () => ({ data: hosts }) };
@@ -316,7 +319,7 @@ describe("useSidebarThreads sections", () => {
         name: "App",
         icon: null,
         isPersonal: false,
-        experimental_ownerPluginId: null,
+        experimental_ownerPlugin: null,
         href: "/projects/proj_app",
         settingsHref: "/settings/projects/proj_app",
       },
@@ -325,7 +328,7 @@ describe("useSidebarThreads sections", () => {
         name: "Personal",
         icon: null,
         isPersonal: true,
-        experimental_ownerPluginId: null,
+        experimental_ownerPlugin: null,
         href: "/",
         settingsHref: `/settings/projects/${PERSONAL_PROJECT_ID}`,
       },
