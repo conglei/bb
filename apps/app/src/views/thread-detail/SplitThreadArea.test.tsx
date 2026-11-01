@@ -1834,6 +1834,7 @@ describe("SplitThreadArea", () => {
       kind: "project-view",
       projectId: "proj_kept",
       viewKey: "core.threads",
+      subPath: "",
     };
     renderSplitArea({
       path: "/projects/proj_kept/views/core.threads",

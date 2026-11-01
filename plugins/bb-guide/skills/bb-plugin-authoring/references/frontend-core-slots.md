@@ -84,7 +84,7 @@ Slot props contracts (versioned, additive-only):
   directly or use the vendored responsive overlay primitives. A crash hides
   only that overlay. Use a content script instead for DOM enhancement that does
   not need React context. Experimental: see `docs/api_to_audit.md`.
-- `experimental_projectView` → `{ projectId: string; isCompactViewport: boolean }`.
+- `experimental_projectView` → `{ projectId: string; isCompactViewport: boolean; subPath: string }`.
   Adds a tab to every project's page, which opens from the project's name in
   the sidebar, the project menus' "Open project", and `bb project open`. The
   page lives at `/projects/<projectId>/views/<pluginId>.<id>`; bb owns the
@@ -99,8 +99,12 @@ Slot props contracts (versioned, additive-only):
   wins, and Threads opens when none does. `experimental_useBadge`
   is a React hook, called with `{ projectId }`, that returns
   `{ count?, text?, tone?, label }` or `null`. Navigate to a view with
-  `useBbNavigate().experimental_toProjectView(projectId, { viewKey })`,
+  `useBbNavigate().experimental_toProjectView(projectId, { viewKey, subPath })`,
   where `viewKey` is `<pluginId>.<viewId>`; omit `viewKey` for the default.
+  `subPath` is the route after the view key, so a view can deep-link into one
+  item: `/projects/<projectId>/views/<pluginId>.<id>/<item>` reaches the view
+  with `subPath: "<item>"` (percent-encoded segments; decode each one), and a
+  Markdown link to that route in a chat message opens it in place.
   The personal project has no page.
   The tab appears only in projects where the plugin is on (project settings →
   Plugins; manifest `bb.experimental_projectDefault` sets the default).

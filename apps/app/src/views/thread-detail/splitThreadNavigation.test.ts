@@ -86,6 +86,7 @@ describe("mixed page navigation", () => {
       kind: "project-view",
       projectId: "proj_kept",
       viewKey: "core.threads",
+      subPath: "",
     } as const;
     const before = splitPane(twoPaneLayout(), "pane-1", "bottom", threadsView);
 
@@ -108,11 +109,39 @@ describe("mixed page navigation", () => {
     });
   });
 
+  it("carries a project view's sub-path through the route and replaces the pane in place", () => {
+    const reviews = {
+      kind: "project-view",
+      projectId: "proj_kept",
+      viewKey: "kept.reviews",
+      subPath: "",
+    } as const;
+    const focused = { ...reviews, subPath: "rev_1/evidence%20a" };
+
+    expect(paneContentRoute(focused)).toBe(
+      "/projects/proj_kept/views/kept.reviews/rev_1/evidence%20a",
+    );
+    expect(
+      paneContentForPathname(
+        "/projects/proj_kept/views/kept.reviews/rev_1/evidence%20a",
+      ),
+    ).toEqual(focused);
+    expect(paneContentRoute(reviews)).toBe(
+      "/projects/proj_kept/views/kept.reviews",
+    );
+
+    const before = splitPane(twoPaneLayout(), "pane-1", "bottom", reviews);
+    const after = reconcileLayoutForContent(before, focused);
+    expect(listPanes(after.root)).toHaveLength(3);
+    expect(findPaneByContent(after.root, reviews)?.content).toEqual(focused);
+  });
+
   it("maps the unnamed project view route to a null view key and back", () => {
     const unnamed = {
       kind: "project-view",
       projectId: "proj_kept",
       viewKey: null,
+      subPath: "",
     } as const;
 
     expect(paneContentForPathname("/projects/proj_kept/views")).toEqual(unnamed);

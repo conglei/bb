@@ -106,7 +106,9 @@ export function useBbNavigate(): BbNavigate {
   >(
     (projectId, options) => {
       onNavigate?.();
-      void navigate(getProjectViewRoutePath(projectId, options?.viewKey));
+      void navigate(
+        getProjectViewRoutePath(projectId, options?.viewKey, options?.subPath),
+      );
     },
     [navigate, onNavigate],
   );

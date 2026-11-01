@@ -21,6 +21,7 @@ export type PaneContent =
       kind: "project-view";
       projectId: string;
       viewKey: string | null;
+      subPath: string;
     };
 
 export interface PaneNode {
