@@ -55,6 +55,7 @@ export const LEGACY_PROJECT_SETTINGS_ROUTE_PATH =
   "/projects/:projectId/settings";
 export const PROJECT_ARCHIVED_ROUTE_PATH = "/projects/:projectId/archived";
 export const PROJECT_VIEW_ROUTE_PATH = "/projects/:projectId/views/:viewKey";
+export const PROJECT_DEFAULT_VIEW_ROUTE_PATH = "/projects/:projectId/views";
 export const CORE_PROJECT_VIEW_PLUGIN_ID = "core";
 export const DEFAULT_PROJECT_VIEW_KEY = "core.threads";
 const THREAD_DETAIL_ROUTE_PATH = "/projects/:projectId/threads/:threadId";
@@ -102,9 +103,12 @@ export function parseProjectViewKey(
 
 export function getProjectViewRoutePath(
   projectId: string,
-  viewKey: string = DEFAULT_PROJECT_VIEW_KEY,
+  viewKey?: string,
 ): string {
-  return `/projects/${encodeURIComponent(projectId)}/views/${encodeURIComponent(viewKey)}`;
+  const base = `/projects/${encodeURIComponent(projectId)}/views`;
+  return viewKey === undefined
+    ? base
+    : `${base}/${encodeURIComponent(viewKey)}`;
 }
 
 export function getSettingsRoutePath(section?: string): string {

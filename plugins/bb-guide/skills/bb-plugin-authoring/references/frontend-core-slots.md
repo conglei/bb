@@ -90,13 +90,18 @@ Slot props contracts (versioned, additive-only):
   page lives at `/projects/<projectId>/views/<pluginId>.<id>`; bb owns the
   title row and the tab strip, and bb's own "Threads" view comes first through
   the same slot. Registration:
-  `{ id, title, icon, component, experimental_useBadge? }`. The component
-  fills the area below the tabs inside the page's scroll region; pad and
-  constrain its own content (`mx-auto w-full max-w-3xl`). `experimental_useBadge`
+  `{ id, title, icon, component, experimental_default?, experimental_useBadge? }`.
+  The component fills the area below the tabs inside the page's scroll
+  region; pad and constrain its own content (`mx-auto w-full max-w-3xl`).
+  `experimental_default: true` makes the view the one the page opens on when
+  none is named (`/projects/<projectId>/views`, which is where the sidebar,
+  the menus and `bb project open` go); the first enabled view that claims it
+  wins, and Threads opens when none does. `experimental_useBadge`
   is a React hook, called with `{ projectId }`, that returns
   `{ count?, text?, tone?, label }` or `null`. Navigate to a view with
   `useBbNavigate().experimental_toProjectView(projectId, { viewKey })`,
-  where `viewKey` is `<pluginId>.<viewId>`. The personal project has no page.
+  where `viewKey` is `<pluginId>.<viewId>`; omit `viewKey` for the default.
+  The personal project has no page.
   The tab appears only in projects where the plugin is on (project settings →
   Plugins; manifest `bb.experimental_projectDefault` sets the default).
   Experimental: see `docs/api_to_audit.md`.

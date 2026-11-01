@@ -14,17 +14,27 @@ import {
 } from "@/lib/plugin-slots";
 import {
   CORE_PROJECT_VIEW_PLUGIN_ID,
+  DEFAULT_PROJECT_VIEW_KEY,
   getProjectViewKey,
   getProjectViewRoutePath,
 } from "@/lib/route-paths";
 
 interface ProjectWorkspaceViewProps {
   projectId: string;
-  viewKey: string;
+  viewKey: string | null;
 }
 
 export function projectViewKeyOf(view: ExperimentalProjectViewSlot): string {
   return getProjectViewKey(view.pluginId, view.id);
+}
+
+export function defaultProjectViewKey(
+  views: readonly ExperimentalProjectViewSlot[],
+): string {
+  const claimed = views.find((view) => view.experimental_default === true);
+  return claimed === undefined
+    ? DEFAULT_PROJECT_VIEW_KEY
+    : projectViewKeyOf(claimed);
 }
 
 function ProjectViewTabs({
@@ -34,7 +44,7 @@ function ProjectViewTabs({
 }: {
   projectId: string;
   views: readonly ExperimentalProjectViewSlot[];
-  activeViewKey: string;
+  activeViewKey: string | null;
 }) {
   return (
     <nav
@@ -121,9 +131,15 @@ export function ProjectWorkspaceView({
   const projectPluginsQuery = useProjectPlugins({ projectId });
   const { views: projectViews, settled: projectPluginsSettled } =
     selectProjectViews(registeredViews, projectPluginsQuery);
+  const settled = pluginsSettled && projectPluginsSettled;
+  const activeViewKey =
+    viewKey ?? (settled ? defaultProjectViewKey(projectViews) : null);
   const view =
-    projectViews.find((candidate) => projectViewKeyOf(candidate) === viewKey) ??
-    null;
+    activeViewKey === null
+      ? null
+      : (projectViews.find(
+          (candidate) => projectViewKeyOf(candidate) === activeViewKey,
+        ) ?? null);
 
   return (
     <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col md:-mx-5 md:-mt-5">
@@ -131,7 +147,7 @@ export function ProjectWorkspaceView({
         <ProjectViewTabs
           projectId={projectId}
           views={projectViews}
-          activeViewKey={viewKey}
+          activeViewKey={activeViewKey}
         />
       </div>
       <PageShell
@@ -139,7 +155,7 @@ export function ProjectWorkspaceView({
         contentClassName="pt-4 md:pt-5"
       >
         {view === null ? (
-          pluginsSettled && projectPluginsSettled ? (
+          settled ? (
             <EmptyStatePanel
               className="rounded-lg p-6 text-sm"
               data-testid="project-view-unavailable"

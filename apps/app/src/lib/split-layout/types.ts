@@ -20,7 +20,7 @@ export type PaneContent =
   | {
       kind: "project-view";
       projectId: string;
-      viewKey: string;
+      viewKey: string | null;
     };
 
 export interface PaneNode {

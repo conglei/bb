@@ -31,7 +31,7 @@ A project maps to a code repository. All threads belong to a project.
     Accepts proj_personal to inspect Personal. Prints the icon name, or
     "default" when none is set.
   bb project open <id>                    Print the URL of the project's page
-    --view <pluginId.viewId>              Open a plugin's view (default: core.threads)
+    --view <pluginId.viewId>              Open one view (default: the project's default view)
   bb project update <id>                  Update a project
     --name <name>                         New name
     --icon <name>                         Set the icon shown beside the project

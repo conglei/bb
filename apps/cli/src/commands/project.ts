@@ -576,7 +576,7 @@ export function registerProjectCommands(
     .description("Print the URL of a project's page, optionally on one view")
     .option(
       "--view <viewKey>",
-      "View to open, as <pluginId>.<viewId> (default: core.threads)",
+      "View to open, as <pluginId>.<viewId> (default: the project's default view)",
     )
     .option("--json", "Print machine-readable JSON output")
     .action(

@@ -154,6 +154,34 @@ describe("collectPluginAppRegistrations — experimental_projectView", () => {
       /"experimental_useBadge" must be a React hook function/,
     );
   });
+
+  it("keeps a boolean default claim and rejects any other value", () => {
+    const claimed = collectPluginAppRegistrations(
+      definePluginApp((app) => {
+        app.slots.experimental_projectView({
+          id: "inbox",
+          title: "Inbox",
+          icon: "Inbox",
+          component: Component,
+          experimental_default: true,
+        });
+      }),
+    );
+    const badDefault = definePluginApp((app) => {
+      app.slots.experimental_projectView({
+        id: "inbox",
+        title: "Inbox",
+        icon: "Inbox",
+        component: Component,
+        experimental_default: "yes" as never,
+      });
+    });
+
+    expect(claimed.projectViews[0]?.experimental_default).toBe(true);
+    expect(() => collectPluginAppRegistrations(badDefault)).toThrow(
+      /"experimental_default" must be a boolean/,
+    );
+  });
 });
 
 describe("collectPluginAppRegistrations — experimental_threadAction", () => {

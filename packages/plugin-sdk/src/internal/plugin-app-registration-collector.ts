@@ -754,11 +754,22 @@ export function collectPluginAppRegistrations(
             `${kind}: "experimental_useBadge" must be a React hook function when set`,
           );
         }
+        if (
+          registration.experimental_default !== undefined &&
+          typeof registration.experimental_default !== "boolean"
+        ) {
+          throw new Error(
+            `${kind}: "experimental_default" must be a boolean when set`,
+          );
+        }
         collected.projectViews.push({
           id,
           title: requireNonEmptyString(kind, "title", registration.title),
           icon: requireNonEmptyString(kind, "icon", registration.icon),
           component: requireComponent(kind, registration.component),
+          ...(registration.experimental_default !== undefined
+            ? { experimental_default: registration.experimental_default }
+            : {}),
           ...(registration.experimental_useBadge !== undefined
             ? { experimental_useBadge: registration.experimental_useBadge }
             : {}),

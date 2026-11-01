@@ -13,6 +13,7 @@ import {
   createSinglePaneLayout,
   focusedPaneRoute,
   paneContentForPathname,
+  paneContentRoute,
   reconcileLayoutForContent,
 } from "./splitThreadNavigation";
 
@@ -105,6 +106,20 @@ describe("mixed page navigation", () => {
       ...threadsView,
       viewKey: "kept.today",
     });
+  });
+
+  it("maps the unnamed project view route to a null view key and back", () => {
+    const unnamed = {
+      kind: "project-view",
+      projectId: "proj_kept",
+      viewKey: null,
+    } as const;
+
+    expect(paneContentForPathname("/projects/proj_kept/views")).toEqual(unnamed);
+    expect(paneContentRoute(unnamed)).toBe("/projects/proj_kept/views");
+    expect(paneContentForPathname("/projects/proj_kept")?.kind).not.toBe(
+      "project-view",
+    );
   });
 });
 
