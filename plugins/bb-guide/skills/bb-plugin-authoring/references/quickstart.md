@@ -54,13 +54,23 @@ the current engine values and the entries for its generated surfaces.
   tool calls from that project's threads are refused. Ship `"off"` for a
   plugin built around a project view that only some projects want.
   Experimental: see `docs/api_to_audit.md`.
-- `bb.experimental_projectScope` (optional, `"any"` | `"single"`, default
-  `"any"`) — `"single"` binds the plugin to one project: it is on in at most
-  one project (its owner) and off everywhere else, so `projectDefault` is
-  forced to `"off"` (declaring `"on"` with it is a manifest error). Turning
-  it on in another project moves it. The server reads the owner through
-  `bb.experimental_projectScope` (backend-foundation.md). Experimental: see
+- `bb.experimental_workspace` (optional, `{ seed?, name? }`) — asks bb for a
+  workspace of the plugin's own: a project whose owner is the plugin,
+  provisioned at `<dataDir>/plugins/<id>/workspace` on the bb server's own
+  machine the first time the plugin loads. `seed` names a directory in the
+  package copied into that folder once (a `CLAUDE.md`, `.bb/skills/*`,
+  starter files); `name` is the project name (default: the plugin's name).
+  The plugin is always on in its workspace, which the composer's project
+  picker hides and the sidebar lists after the user's projects. Read it
+  through `bb.experimental_workspace` (backend-foundation.md); `bb plugin
+workspace <id>` shows, adopts or releases it. Experimental: see
   `docs/api_to_audit.md`.
+- `bb.experimental_projectScope` (optional, `"any"` | `"single"`, default
+  `"any"`) — `"single"` is the older spelling of `experimental_workspace: {}`:
+  the plugin gets a workspace, `projectDefault` is forced to `"off"`
+  (declaring `"on"` with it is a manifest error), and a project where the
+  plugin was already on becomes its workspace on the next load. It no longer
+  limits the plugin to one project. Experimental: see `docs/api_to_audit.md`.
 - `bb.themes` (optional) — contributes palettes to Settings → Appearance and
   `bb theme list`. Each entry is
   `{ id, name, description?, css: "./themes/name.css", codeTheme? }`;

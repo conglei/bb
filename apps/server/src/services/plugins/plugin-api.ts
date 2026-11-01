@@ -43,6 +43,7 @@ import type {
   PluginEnvironments,
   ExperimentalPluginOwnerProject,
   ExperimentalPluginProjectScope,
+  ExperimentalPluginWorkspace,
   ExperimentalPluginProjectSettings,
   PluginHooks,
   PluginHookHandler,
@@ -165,9 +166,16 @@ export interface PluginProjectScopeRecord {
   }): void;
 }
 
+export interface PluginWorkspaceTarget {
+  projectId: string;
+  hostId: string;
+  path: string;
+}
+
 export interface PluginProjectScopeSource {
   resolveOwner(): ExperimentalPluginOwnerProject | null;
   describeProject(projectId: string): ExperimentalPluginOwnerProject | null;
+  resolveWorkspaceTarget(): PluginWorkspaceTarget | null;
 }
 
 export type {
@@ -984,6 +992,38 @@ export function createPluginApi(options: {
     },
   };
 
+  const experimental_workspace: ExperimentalPluginWorkspace = {
+    async get() {
+      assertLive();
+      return projectScopeSource.resolveOwner();
+    },
+    onChange(listener) {
+      assertLive();
+      projectScopeRecord.listeners.push(listener);
+    },
+    async spawnThread(args) {
+      assertLive();
+      const target = projectScopeSource.resolveWorkspaceTarget();
+      if (target === null) {
+        throw new Error(
+          `plugin ${pluginId} has no workspace on the bb server's own host yet`,
+        );
+      }
+      const { prompt, title, ...rest } = args;
+      return api.sdk.threads.spawn({
+        ...rest,
+        projectId: target.projectId,
+        environment: {
+          type: "host",
+          hostId: target.hostId,
+          workspace: { type: "unmanaged", path: target.path },
+        },
+        prompt,
+        ...(title === undefined ? {} : { title }),
+      });
+    },
+  };
+
   const http: PluginHttp = {
     route(method, path, handler, opts) {
       assertLive();
@@ -1570,6 +1610,7 @@ export function createPluginApi(options: {
     settings,
     experimental_projectSettings,
     experimental_projectScope,
+    experimental_workspace,
     storage,
     http,
     rpc,

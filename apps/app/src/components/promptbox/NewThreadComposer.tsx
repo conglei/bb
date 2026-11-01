@@ -551,8 +551,14 @@ export function NewThreadComposer({
     [currentProject?.sources],
   );
   const projectOptions = useMemo(
-    () => projects?.map(({ id, name }) => ({ id, name })) ?? [],
-    [projects],
+    () =>
+      projects
+        ?.filter(
+          (project) =>
+            project.ownerKind !== "plugin" || project.id === projectId,
+        )
+        .map(({ id, name }) => ({ id, name })) ?? [],
+    [projectId, projects],
   );
 
   const hostsQuery = useHosts();

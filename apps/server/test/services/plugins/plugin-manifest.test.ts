@@ -143,7 +143,7 @@ describe("plugin manifest", () => {
       experimental_projectDefault: "on",
     });
     await expect(readPluginManifest(rootDir)).rejects.toThrow(
-      /experimental_projectDefault.*binds the plugin to one project/s,
+      /experimental_projectDefault.*gives the plugin a workspace of its own/s,
     );
 
     await writeManifest(undefined, {
@@ -175,6 +175,40 @@ describe("plugin manifest", () => {
     expect(manifest.branding.compactIconPath).toBe(
       join(rootDir, "assets", "icon.svg"),
     );
+  });
+
+  it("reads experimental_workspace and treats single scope as its alias", async () => {
+    await writeManifest(undefined, validBb);
+    expect((await readPluginManifest(rootDir)).workspace).toBeNull();
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_workspace: { seed: "./seed", name: "Kept" },
+    });
+    expect((await readPluginManifest(rootDir)).workspace).toEqual({
+      seedPath: join(rootDir, "seed"),
+      name: "Kept",
+    });
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_workspace: {},
+    });
+    expect((await readPluginManifest(rootDir)).workspace).toEqual({
+      seedPath: null,
+      name: "Contract fixture",
+    });
+
+    await writeManifest(undefined, {
+      ...validBb,
+      experimental_projectScope: "single",
+    });
+    const single = await readPluginManifest(rootDir);
+    expect(single.workspace).toEqual({
+      seedPath: null,
+      name: "Contract fixture",
+    });
+    expect(single.projectDefault).toBe("off");
   });
 
   it("keeps a named branding.icon as a host icon hint", async () => {

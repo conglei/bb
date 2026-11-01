@@ -154,7 +154,7 @@ describe("plugin per-project settings + storage", () => {
     const app = new Hono();
     registerPluginRoutes(
       app,
-      { config: { serverPort: 3334 }, db },
+      { config: { serverPort: 3334 }, db, hub: noopNotifier },
       service,
       createPluginInstallJobs({ notifyChanged: () => {} }),
       createPluginUpdateJobs({ notifyChanged: () => {} }),

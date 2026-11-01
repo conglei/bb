@@ -163,11 +163,14 @@ vi.mock("@/hooks/usePromptDraftStorage", async () => {
 function payload(threads: ThreadListEntry[], sections: SidebarSection[] = []) {
   return {
     sections,
-    projects: [{ id: "proj_app", name: "App", icon: null, threads }],
+    projects: [
+      { id: "proj_app", name: "App", icon: null, ownerPluginId: null, threads },
+    ],
     personalProject: {
       id: PERSONAL_PROJECT_ID,
       name: "Personal",
       icon: null,
+      ownerPluginId: null,
       threads: [],
     },
   };
@@ -313,6 +316,7 @@ describe("useSidebarThreads sections", () => {
         name: "App",
         icon: null,
         isPersonal: false,
+        experimental_ownerPluginId: null,
         href: "/projects/proj_app",
         settingsHref: "/settings/projects/proj_app",
       },
@@ -321,6 +325,7 @@ describe("useSidebarThreads sections", () => {
         name: "Personal",
         icon: null,
         isPersonal: true,
+        experimental_ownerPluginId: null,
         href: "/",
         settingsHref: `/settings/projects/${PERSONAL_PROJECT_ID}`,
       },

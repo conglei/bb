@@ -580,6 +580,11 @@ function ProjectModeSections({
     () =>
       projects
         .filter((project) => !project.isPersonal)
+        .sort(
+          (a, b) =>
+            Number(a.experimental_ownerPluginId !== null) -
+            Number(b.experimental_ownerPluginId !== null),
+        )
         .map((project) => ({
           project,
           threadListState: getProjectThreadListState({

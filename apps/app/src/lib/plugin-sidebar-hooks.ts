@@ -188,6 +188,7 @@ export function useSidebarThreads(
         name: project.name,
         icon: project.icon,
         isPersonal: project.id === PERSONAL_PROJECT_ID,
+        experimental_ownerPluginId: project.ownerPluginId,
         href: getProjectComposeRoutePath(project.id),
         settingsHref: getSettingsProjectRoutePath(project.id),
       })),

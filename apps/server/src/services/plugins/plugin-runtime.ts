@@ -11,9 +11,11 @@ import {
 } from "@bb/domain";
 import { logPluginBuildWarnings } from "./plugin-log.js";
 import {
+  clearProjectPluginScopeCache,
   describeOwnerProject,
   resolvePluginOwnerProject,
 } from "./project-plugin-scope.js";
+import { ensurePluginWorkspace } from "./plugin-workspaces.js";
 import { readPrimaryHostIdFromDataDir } from "../hosts/primary-host.js";
 import type { MachineEnrollmentService } from "../machines/machine-services.js";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -49,6 +51,7 @@ import {
   getInstalledPlugin,
   getPluginSafeMode,
   listInstalledPlugins,
+  noopNotifier,
   prunePluginSchedules,
   upsertPluginSchedule,
   type InstalledPluginRow,
@@ -1815,7 +1818,7 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
       },
       projectScope: {
         resolveOwner: () =>
-          manifest.projectScope === "single"
+          manifest.workspace !== null
             ? resolvePluginOwnerProject(deps.db, {
                 pluginId: row.id,
                 localHostId: readPrimaryHostIdFromDataDir({
@@ -1823,6 +1826,26 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
                 }),
               })
             : null,
+        resolveWorkspaceTarget: () => {
+          if (manifest.workspace === null) return null;
+          const hostId = readPrimaryHostIdFromDataDir({
+            dataDir: deps.dataDir,
+          });
+          const owner = resolvePluginOwnerProject(deps.db, {
+            pluginId: row.id,
+            localHostId: hostId,
+          });
+          const path = owner?.localPaths[0];
+          if (
+            owner === undefined ||
+            owner === null ||
+            hostId === null ||
+            path === undefined
+          ) {
+            return null;
+          }
+          return { projectId: owner.projectId, hostId, path };
+        },
         describeProject: (projectId) =>
           describeOwnerProject(deps.db, {
             projectId,
@@ -2136,6 +2159,31 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
         row.id,
         "running",
         details.length > 0 ? details.join("; ") : null,
+      );
+    }
+    try {
+      const outcome = await ensurePluginWorkspace({
+        db: deps.db,
+        notifier: deps.dbNotifier ?? noopNotifier,
+        dataDir: deps.dataDir,
+        logger,
+        pluginId: row.id,
+        manifest,
+      });
+      if (outcome?.kind === "created" || outcome?.kind === "adopted") {
+        clearProjectPluginScopeCache(outcome.projectId);
+        handle.projectScope.notifyOwnerChanged({
+          previousOwnerProjectId: null,
+          ownerProjectId: outcome.projectId,
+        });
+      } else if (outcome?.kind === "deferred") {
+        logger.warn(
+          `plugin ${row.id} workspace not provisioned yet: ${outcome.reason}`,
+        );
+      }
+    } catch (error) {
+      logger.warn(
+        `plugin ${row.id} workspace provisioning failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     logger.info(`plugin ${row.id}@${manifest.version} loaded`);

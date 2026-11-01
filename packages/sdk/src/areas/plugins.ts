@@ -41,7 +41,10 @@ import {
   pluginTokenResponseSchema,
   pluginUpdateCheckRequestSchema,
   pluginUpdateCheckResponseSchema,
+  pluginWorkspaceAdoptRequestSchema,
+  pluginWorkspaceResponseSchema,
   type InstalledPlugin,
+  type PluginWorkspaceResponse,
   type PluginCatalogInstallPlan as PluginCatalogInstallPlanContract,
   type PluginCatalogResolvedSource,
   type PluginCatalogSearchResponse as PluginCatalogSearchResponseContract,
@@ -172,6 +175,16 @@ export interface PluginProjectSettingsArgs extends PluginIdArgs {
   projectId: string;
   signal?: AbortSignal;
 }
+
+export interface PluginWorkspaceArgs extends PluginIdArgs {
+  signal?: AbortSignal;
+}
+
+export interface PluginWorkspaceAdoptArgs extends PluginIdArgs {
+  projectId: string;
+}
+
+export type PluginWorkspaceResult = PluginWorkspaceResponse["workspace"];
 
 export interface PluginProjectSettingsUpdateArgs extends PluginIdArgs {
   projectId: string;
@@ -332,6 +345,21 @@ export interface PluginsArea {
   getProjectSettings(
     args: PluginProjectSettingsArgs,
   ): Promise<PluginGetProjectSettingsResult>;
+  /**
+   * The workspace bb owns for the plugin (manifest
+   * `bb.experimental_workspace`), or `null` while none exists.
+   */
+  getWorkspace(args: PluginWorkspaceArgs): Promise<PluginWorkspaceResult>;
+  /**
+   * Make an existing project the plugin's workspace. A project the plugin
+   * owned before returns to user ownership. Rejects (404) for an unknown
+   * plugin or project and (409) for a project another plugin owns.
+   */
+  adoptWorkspace(
+    args: PluginWorkspaceAdoptArgs,
+  ): Promise<PluginWorkspaceResult>;
+  /** Return the plugin's workspace to user ownership; resolves `null`. */
+  releaseWorkspace(args: PluginIdArgs): Promise<PluginWorkspaceResult>;
   getSource(args: PluginGetSourceArgs): Promise<PluginGetSourceResult>;
   install(args: PluginInstallArgs): Promise<PluginInstallResult>;
   startInstall(args: PluginInstallArgs): Promise<PluginInstallJob>;
@@ -718,6 +746,33 @@ export function createPluginsArea(args: CreateSdkAreaArgs): PluginsArea {
         pluginSettingsResponseSchema,
         { signal: input.signal },
       );
+    },
+    async getWorkspace(input) {
+      const response = await requestParsed(
+        pluginPath(input.pluginId, "/workspace"),
+        pluginWorkspaceResponseSchema,
+        { signal: input.signal },
+      );
+      return response.workspace;
+    },
+    async adoptWorkspace(input) {
+      const body = pluginWorkspaceAdoptRequestSchema.parse({
+        projectId: input.projectId,
+      });
+      const response = await requestParsed(
+        pluginPath(input.pluginId, "/workspace/adopt"),
+        pluginWorkspaceResponseSchema,
+        jsonInit("POST", body),
+      );
+      return response.workspace;
+    },
+    async releaseWorkspace(input) {
+      const response = await requestParsed(
+        pluginPath(input.pluginId, "/workspace/release"),
+        pluginWorkspaceResponseSchema,
+        jsonInit("POST", {}),
+      );
+      return response.workspace;
     },
     async getSource(input) {
       return requestParsed(

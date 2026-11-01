@@ -174,6 +174,7 @@ const BB_PLUGIN_API_KEYS = [
   "settings",
   "experimental_projectSettings",
   "experimental_projectScope",
+  "experimental_workspace",
   "storage",
   "http",
   "rpc",
@@ -547,6 +548,7 @@ const PROJECT_VIEW_REGISTRATION_FIELDS = [
   "icon",
   "component",
   "experimental_useBadge",
+  "experimental_default",
 ] as const satisfies readonly (keyof ExperimentalProjectViewRegistration)[];
 
 type MissingProjectViewRegistrationField = Exclude<

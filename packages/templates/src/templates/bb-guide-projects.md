@@ -11,6 +11,8 @@ A project maps to a code repository. All threads belong to a project.
 
   bb project list                         List ordinary projects
     --include-personal                    Also include the personal project
+    --owner <user|plugin>                 Only your own projects, or only the
+                                          workspaces bb owns for plugins
   bb project discover                     Find recently used git repos
     --machine <id-or-name>                Machine to scan (default: local)
     --host <id-or-name>                   Alias for --machine

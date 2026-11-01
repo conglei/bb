@@ -125,13 +125,15 @@ function toProjectResponseProjectFields(
     name: project.name,
     icon: project.icon,
     gitRemoteUrl: project.gitRemoteUrl,
+    ownerKind: project.ownerKind,
+    ownerPluginId: project.ownerPluginId,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };
 }
 
-function buildProjectResponsesFromRows(
-  deps: AppDeps,
+export function buildProjectResponsesFromRows(
+  deps: Pick<AppDeps, "db">,
   projects: ProjectResponseProjectFields[],
 ): ProjectResponse[] {
   if (projects.length === 0) {
@@ -168,13 +170,14 @@ function buildProjectResponses(
 
 interface ProjectListOptions {
   includePersonal: boolean;
+  owner?: "user" | "plugin";
 }
 
 function listDiscoverableProjects(
   deps: AppDeps,
   options: ProjectListOptions,
 ): ProjectResponseProjectFields[] {
-  const projects = listPublicProjects(deps.db);
+  const projects = listPublicProjects(deps.db, { owner: options.owner });
   if (!options.includePersonal) {
     return projects;
   }
@@ -428,6 +431,7 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
     const includes = parseProjectListIncludes(query);
     const options: ProjectListOptions = {
       includePersonal: query.includePersonal === "true",
+      ...(query.owner === undefined ? {} : { owner: query.owner }),
     };
     if (includes.has("threads")) {
       return context.json(buildProjectsWithThreadsResponse(deps, options));

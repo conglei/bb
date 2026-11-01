@@ -1,9 +1,9 @@
 import {
   deleteProjectPluginState,
   deleteProjectPluginStatesForPlugin,
-  deleteProjectPluginStatesForPluginExcept,
+  getPluginOwnedProject,
   getProject,
-  listEnabledProjectIdsForPlugin,
+  setProjectOwner,
   listProjectPluginStates,
   listProjectSourcesByProjectIds,
   upsertProjectPluginState,
@@ -95,13 +95,19 @@ function resolveEnabled(
   return (defaults.get(pluginId) ?? "on") === "on";
 }
 
+function ownerPluginIdOf(db: DbConnection, projectId: string): string | null {
+  return getProject(db, projectId)?.ownerPluginId ?? null;
+}
+
 export function projectPluginFilter(
   db: DbConnection,
   projectId: string,
 ): (pluginId: string) => boolean {
   const overrides = overridesFor(db, projectId);
   const defaults = manifestDefaults();
-  return (pluginId) => resolveEnabled(overrides, defaults, pluginId);
+  const ownerPluginId = ownerPluginIdOf(db, projectId);
+  return (pluginId) =>
+    pluginId === ownerPluginId || resolveEnabled(overrides, defaults, pluginId);
 }
 
 export function isPluginEnabledForProject(
@@ -141,7 +147,48 @@ export function getPluginOwnerProjectId(
   db: DbConnection,
   pluginId: string,
 ): string | null {
-  return listEnabledProjectIdsForPlugin(db, { pluginId })[0] ?? null;
+  return getPluginOwnedProject(db, pluginId)?.id ?? null;
+}
+
+export function setPluginWorkspaceOwner(
+  db: DbConnection,
+  notifier: DbNotifier,
+  args: { pluginId: string; projectId: string | null },
+): string | null {
+  const previousOwnerProjectId =
+    getPluginOwnedProject(db, args.pluginId)?.id ?? null;
+  const touchedProjectIds = new Set<string>();
+  if (
+    previousOwnerProjectId !== null &&
+    previousOwnerProjectId !== args.projectId
+  ) {
+    setProjectOwner(db, notifier, {
+      projectId: previousOwnerProjectId,
+      owner: { kind: "user" },
+    });
+    touchedProjectIds.add(previousOwnerProjectId);
+  }
+  let ownerProjectId: string | null = null;
+  if (args.projectId !== null) {
+    const adopted = setProjectOwner(db, notifier, {
+      projectId: args.projectId,
+      owner: { kind: "plugin", pluginId: args.pluginId },
+    });
+    ownerProjectId = adopted?.id ?? null;
+    if (ownerProjectId !== null) touchedProjectIds.add(ownerProjectId);
+  }
+  for (const projectId of touchedProjectIds) {
+    clearProjectPluginScopeCache(projectId);
+    notifier.notifyProject(projectId, ["project-plugins-changed"]);
+  }
+  if (ownerProjectId !== previousOwnerProjectId) {
+    source?.projectOwnerChanged?.({
+      pluginId: args.pluginId,
+      previousOwnerProjectId,
+      ownerProjectId,
+    });
+  }
+  return ownerProjectId;
 }
 
 export function resolvePluginOwnerProject(
@@ -186,15 +233,14 @@ export function listProjectPlugins(
     .sort((a, b) => a.pluginId.localeCompare(b.pluginId))
     .map((plugin) => {
       const override = overrides.get(plugin.pluginId);
-      const ownerProjectId =
-        plugin.projectScope === "single"
-          ? getPluginOwnerProjectId(db, plugin.pluginId)
-          : null;
+      const ownerProjectId = getPluginOwnerProjectId(db, plugin.pluginId);
       return {
         pluginId: plugin.pluginId,
         name: plugin.name,
         icon: plugin.icon,
-        enabled: override ?? plugin.projectDefault === "on",
+        enabled:
+          ownerProjectId === projectId ||
+          (override ?? plugin.projectDefault === "on"),
         source: override === undefined ? "default" : "project",
         hasProjectSettings: plugin.hasProjectSettings,
         scope: plugin.projectScope,
@@ -216,9 +262,12 @@ export function setProjectPluginEnabled(
   notifier: DbNotifier,
   args: { projectId: string; pluginId: string; enabled: boolean | null },
 ): void {
-  const plugin = findScopedPlugin(args.pluginId);
-  if (plugin?.projectScope === "single") {
-    setSingleScopePluginEnabled(db, notifier, args);
+  if (ownerPluginIdOf(db, args.projectId) === args.pluginId) {
+    deleteProjectPluginState(db, {
+      projectId: args.projectId,
+      pluginId: args.pluginId,
+    });
+    clearProjectPluginScopeCache(args.projectId);
     return;
   }
   if (args.enabled === null) {
@@ -235,50 +284,6 @@ export function setProjectPluginEnabled(
   }
   clearProjectPluginScopeCache(args.projectId);
   notifier.notifyProject(args.projectId, ["project-plugins-changed"]);
-}
-
-function setSingleScopePluginEnabled(
-  db: DbConnection,
-  notifier: DbNotifier,
-  args: { projectId: string; pluginId: string; enabled: boolean | null },
-): void {
-  const previousOwnerProjectId = getPluginOwnerProjectId(db, args.pluginId);
-  const touchedProjectIds = new Set<string>([args.projectId]);
-  if (args.enabled === true) {
-    for (const projectId of deleteProjectPluginStatesForPluginExcept(db, {
-      pluginId: args.pluginId,
-      keepProjectId: args.projectId,
-    })) {
-      touchedProjectIds.add(projectId);
-    }
-    upsertProjectPluginState(db, {
-      projectId: args.projectId,
-      pluginId: args.pluginId,
-      enabled: true,
-    });
-  } else {
-    deleteProjectPluginState(db, {
-      projectId: args.projectId,
-      pluginId: args.pluginId,
-    });
-  }
-  if (previousOwnerProjectId !== null) {
-    touchedProjectIds.add(previousOwnerProjectId);
-  }
-  for (const projectId of touchedProjectIds) {
-    clearProjectPluginScopeCache(projectId);
-  }
-  for (const projectId of touchedProjectIds) {
-    notifier.notifyProject(projectId, ["project-plugins-changed"]);
-  }
-  const ownerProjectId = getPluginOwnerProjectId(db, args.pluginId);
-  if (ownerProjectId !== previousOwnerProjectId) {
-    source?.projectOwnerChanged?.({
-      pluginId: args.pluginId,
-      previousOwnerProjectId,
-      ownerProjectId,
-    });
-  }
 }
 
 export function forgetPluginProjectStates(

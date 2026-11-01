@@ -17,6 +17,7 @@ import {
   listProjectPlugins,
   projectPluginFilter,
   resolvePluginOwnerProject,
+  setPluginWorkspaceOwner,
   setProjectPluginEnabled,
   setProjectPluginScopeSource,
   withDisabledPluginSkillSelections,
@@ -228,7 +229,7 @@ describe("project plugin scope", () => {
     expect(selections.get("kept")).toEqual(new Set());
   });
 
-  describe("single-scope plugins", () => {
+  describe("plugin-owned workspaces", () => {
     const SINGLE: ProjectScopedPlugin = {
       pluginId: "master",
       name: "Master",
@@ -238,7 +239,7 @@ describe("project plugin scope", () => {
       hasProjectSettings: false,
     };
 
-    function setupSingle() {
+    function setupOwned() {
       const base = setup();
       const { project: other } = createProject(base.db, noopNotifier, {
         name: "other-project",
@@ -256,175 +257,169 @@ describe("project plugin scope", () => {
       return { ...base, other, ownerChanges };
     }
 
-    it("has no owner until a project turns it on, then lists the owner everywhere", () => {
-      const { db, project, other, notifier, ownerChanges } = setupSingle();
-      expect(getPluginOwnerProjectId(db, "master")).toBeNull();
-      expect(listProjectPlugins(db, project.id)[2]).toEqual(
-        expect.objectContaining({
-          pluginId: "master",
-          enabled: false,
-          scope: "single",
-          ownerProjectId: null,
-          ownerProjectName: null,
+    it("treats the owner as enabled without a state row and ignores writes there", () => {
+      const { db, project, other, notifier, notifyProject, ownerChanges } =
+        setupOwned();
+      expect(getPluginOwnerProjectId(db, "kept")).toBeNull();
+
+      expect(
+        setPluginWorkspaceOwner(db, notifier, {
+          pluginId: "kept",
+          projectId: project.id,
         }),
-      );
+      ).toBe(project.id);
 
-      setProjectPluginEnabled(db, notifier, {
-        projectId: project.id,
-        pluginId: "master",
-        enabled: true,
-      });
-
-      expect(getPluginOwnerProjectId(db, "master")).toBe(project.id);
-      expect(listProjectPlugins(db, project.id)[2]).toEqual(
+      expect(getPluginOwnerProjectId(db, "kept")).toBe(project.id);
+      expect(
+        isPluginEnabledForProject(db, {
+          pluginId: "kept",
+          projectId: project.id,
+        }),
+      ).toBe(true);
+      expect(
+        isPluginEnabledForProject(db, {
+          pluginId: "kept",
+          projectId: other.id,
+        }),
+      ).toBe(false);
+      expect(listProjectPlugins(db, project.id)[1]).toEqual(
         expect.objectContaining({
+          pluginId: "kept",
           enabled: true,
-          source: "project",
-          ownerProjectId: project.id,
-          ownerProjectName: "scope-project",
-        }),
-      );
-      expect(listProjectPlugins(db, other.id)[2]).toEqual(
-        expect.objectContaining({
-          enabled: false,
           source: "default",
           ownerProjectId: project.id,
           ownerProjectName: "scope-project",
         }),
       );
+      expect(notifyProject).toHaveBeenCalledWith(project.id, [
+        "project-plugins-changed",
+      ]);
       expect(ownerChanges).toEqual([
         {
-          pluginId: "master",
+          pluginId: "kept",
           previousOwnerProjectId: null,
           ownerProjectId: project.id,
         },
       ]);
-    });
 
-    it("moves ownership on enable, invalidating and notifying both projects", () => {
-      const { db, project, other, notifier, notifyProject, ownerChanges } =
-        setupSingle();
       setProjectPluginEnabled(db, notifier, {
         projectId: project.id,
-        pluginId: "master",
-        enabled: true,
+        pluginId: "kept",
+        enabled: false,
       });
       expect(
         isPluginEnabledForProject(db, {
-          pluginId: "master",
+          pluginId: "kept",
           projectId: project.id,
         }),
       ).toBe(true);
-      expect(
-        isPluginEnabledForProject(db, {
-          pluginId: "master",
-          projectId: other.id,
-        }),
-      ).toBe(false);
-      notifyProject.mockClear();
+      expect(enabledPluginIdsForProject(db, project.id)).toEqual(
+        new Set(["git", "kept"]),
+      );
+    });
 
-      setProjectPluginEnabled(db, notifier, {
+    it("moves the workspace to another project and releases it", () => {
+      const { db, project, other, notifier, ownerChanges } = setupOwned();
+      setPluginWorkspaceOwner(db, notifier, {
+        pluginId: "kept",
+        projectId: project.id,
+      });
+      setPluginWorkspaceOwner(db, notifier, {
+        pluginId: "kept",
         projectId: other.id,
-        pluginId: "master",
-        enabled: true,
       });
-
-      expect(getPluginOwnerProjectId(db, "master")).toBe(other.id);
+      expect(getPluginOwnerProjectId(db, "kept")).toBe(other.id);
       expect(
         isPluginEnabledForProject(db, {
-          pluginId: "master",
+          pluginId: "kept",
           projectId: project.id,
         }),
       ).toBe(false);
-      expect(
-        isPluginEnabledForProject(db, {
-          pluginId: "master",
-          projectId: other.id,
-        }),
-      ).toBe(true);
-      expect(listProjectPlugins(db, project.id)[2]).toEqual(
-        expect.objectContaining({
-          enabled: false,
-          source: "default",
-          ownerProjectId: other.id,
-        }),
-      );
-      expect(notifyProject.mock.calls.map(([id]) => id).sort()).toEqual(
-        [project.id, other.id].sort(),
-      );
       expect(ownerChanges.at(-1)).toEqual({
-        pluginId: "master",
+        pluginId: "kept",
         previousOwnerProjectId: project.id,
         ownerProjectId: other.id,
       });
+
+      expect(
+        setPluginWorkspaceOwner(db, notifier, {
+          pluginId: "kept",
+          projectId: null,
+        }),
+      ).toBeNull();
+      expect(getPluginOwnerProjectId(db, "kept")).toBeNull();
+      expect(ownerChanges.at(-1)).toEqual({
+        pluginId: "kept",
+        previousOwnerProjectId: other.id,
+        ownerProjectId: null,
+      });
+      expect(ownerChanges).toHaveLength(3);
     });
 
-    it("clears the owner on disable or reset and leaves another owner's row alone", () => {
-      const { db, project, other, notifier, ownerChanges } = setupSingle();
+    it("enables a single-scope plugin per project without moving anything", () => {
+      const { db, project, other, notifier, ownerChanges } = setupOwned();
       setProjectPluginEnabled(db, notifier, {
         projectId: project.id,
         pluginId: "master",
         enabled: true,
       });
-
       setProjectPluginEnabled(db, notifier, {
         projectId: other.id,
         pluginId: "master",
-        enabled: false,
+        enabled: true,
       });
-      expect(getPluginOwnerProjectId(db, "master")).toBe(project.id);
-      expect(ownerChanges).toHaveLength(1);
-
-      setProjectPluginEnabled(db, notifier, {
-        projectId: project.id,
-        pluginId: "master",
-        enabled: false,
-      });
-      expect(getPluginOwnerProjectId(db, "master")).toBeNull();
       expect(
         isPluginEnabledForProject(db, {
           pluginId: "master",
           projectId: project.id,
         }),
-      ).toBe(false);
-      expect(ownerChanges.at(-1)).toEqual({
-        pluginId: "master",
-        previousOwnerProjectId: project.id,
-        ownerProjectId: null,
-      });
+      ).toBe(true);
+      expect(
+        isPluginEnabledForProject(db, {
+          pluginId: "master",
+          projectId: other.id,
+        }),
+      ).toBe(true);
+      expect(ownerChanges).toEqual([]);
+    });
 
+    it("reads the owner from the project row only, never from enablement", () => {
+      const { db, project, notifier } = setupOwned();
       setProjectPluginEnabled(db, notifier, {
         projectId: project.id,
         pluginId: "master",
         enabled: true,
       });
-      setProjectPluginEnabled(db, notifier, {
-        projectId: project.id,
-        pluginId: "master",
-        enabled: null,
-      });
       expect(getPluginOwnerProjectId(db, "master")).toBeNull();
-      expect(ownerChanges).toHaveLength(4);
+      expect(listProjectPlugins(db, project.id)[2]).toEqual(
+        expect.objectContaining({
+          pluginId: "master",
+          scope: "single",
+          enabled: true,
+          source: "project",
+          ownerProjectId: null,
+          ownerProjectName: null,
+        }),
+      );
     });
 
     it("resolves the owner with its local paths on the server host only", () => {
-      const { db, host, project, notifier } = setupSingle();
+      const { db, host, project, notifier } = setupOwned();
       const otherHost = upsertHost(db, noopNotifier, { name: "elsewhere" });
       expect(
         resolvePluginOwnerProject(db, {
-          pluginId: "master",
+          pluginId: "kept",
           localHostId: host.id,
         }),
       ).toBeNull();
 
-      setProjectPluginEnabled(db, notifier, {
+      setPluginWorkspaceOwner(db, notifier, {
+        pluginId: "kept",
         projectId: project.id,
-        pluginId: "master",
-        enabled: true,
       });
       expect(
         resolvePluginOwnerProject(db, {
-          pluginId: "master",
+          pluginId: "kept",
           localHostId: host.id,
         }),
       ).toEqual({
@@ -434,7 +429,7 @@ describe("project plugin scope", () => {
       });
       expect(
         resolvePluginOwnerProject(db, {
-          pluginId: "master",
+          pluginId: "kept",
           localHostId: otherHost.id,
         }),
       ).toEqual({
@@ -443,10 +438,7 @@ describe("project plugin scope", () => {
         localPaths: [],
       });
       expect(
-        resolvePluginOwnerProject(db, {
-          pluginId: "master",
-          localHostId: null,
-        }),
+        resolvePluginOwnerProject(db, { pluginId: "kept", localHostId: null }),
       ).toEqual({
         projectId: project.id,
         name: "scope-project",

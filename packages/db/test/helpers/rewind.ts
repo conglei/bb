@@ -65,6 +65,18 @@ export function dropThreadParentNotificationsColumn(db: DbConnection): void {
   }
 }
 
+export function dropProjectOwnerColumns(db: DbConnection): void {
+  db.$client.exec("DROP INDEX IF EXISTS projects_owner_plugin_idx");
+  const columns = db.$client
+    .prepare<[], { name: string }>("PRAGMA table_info(projects)")
+    .all();
+  for (const name of ["owner_plugin_id", "owner_kind"]) {
+    if (columns.some((column) => column.name === name)) {
+      db.$client.exec(`ALTER TABLE projects DROP COLUMN ${name}`);
+    }
+  }
+}
+
 export function dropProjectIconColumn(db: DbConnection): void {
   const columns = db.$client
     .prepare<[], { name: string }>("PRAGMA table_info(projects)")

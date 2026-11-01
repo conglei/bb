@@ -284,6 +284,7 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb plugin safe-mode`
 - `bb plugin prune`
 - `bb plugin config`
+- `bb plugin workspace`
 - `bb plugin token`
 - `bb plugin run`
 - `bb plugin logs`

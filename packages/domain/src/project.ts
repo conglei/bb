@@ -6,6 +6,10 @@ const projectKindValues = ["standard", "personal"] as const;
 const projectKindSchema = z.enum(projectKindValues);
 export type ProjectKind = z.infer<typeof projectKindSchema>;
 
+export const projectOwnerKindValues = ["user", "plugin"] as const;
+export const projectOwnerKindSchema = z.enum(projectOwnerKindValues);
+export type ProjectOwnerKind = z.infer<typeof projectOwnerKindSchema>;
+
 export const PROJECT_ICON_NAME_PATTERN = /^[A-Za-z0-9]+$/;
 export const PROJECT_ICON_NAME_MAX_LENGTH = 64;
 
@@ -24,6 +28,8 @@ export const projectSchema = z.object({
   name: z.string(),
   icon: projectIconNameSchema.nullable(),
   gitRemoteUrl: z.string().nullable(),
+  ownerKind: projectOwnerKindSchema,
+  ownerPluginId: z.string().nullable(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });

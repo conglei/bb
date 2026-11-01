@@ -19,6 +19,7 @@ import {
   setPluginSettingsValues,
   type DbConnection,
 } from "@bb/db";
+import { noopNotifier } from "@bb/db";
 import { createMigratedConnection } from "@bb/db/testing";
 import type { Logger } from "@bb/logger";
 import { registerPluginRoutes } from "../../../src/routes/plugins.js";
@@ -294,7 +295,7 @@ describe("plugin settings + storage", () => {
       const app = new Hono();
       registerPluginRoutes(
         app,
-        { config: { serverPort: 3334 }, db },
+        { config: { serverPort: 3334 }, db, hub: noopNotifier },
         service,
         createPluginInstallJobs({ notifyChanged: () => {} }),
         createPluginUpdateJobs({ notifyChanged: () => {} }),
@@ -354,7 +355,7 @@ describe("plugin settings + storage", () => {
       const app = new Hono();
       registerPluginRoutes(
         app,
-        { config: { serverPort: 3334 }, db },
+        { config: { serverPort: 3334 }, db, hub: noopNotifier },
         service,
         createPluginInstallJobs({ notifyChanged: () => {} }),
         createPluginUpdateJobs({ notifyChanged: () => {} }),
@@ -394,7 +395,7 @@ describe("plugin settings + storage", () => {
       const app = new Hono();
       registerPluginRoutes(
         app,
-        { config: { serverPort: 3334 }, db },
+        { config: { serverPort: 3334 }, db, hub: noopNotifier },
         service,
         createPluginInstallJobs({ notifyChanged: () => {} }),
         createPluginUpdateJobs({ notifyChanged: () => {} }),

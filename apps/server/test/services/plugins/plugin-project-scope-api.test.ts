@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createProject,
+  getPluginOwnedProject,
+  getProject,
   noopNotifier,
   upsertHost,
   type DbConnection,
@@ -19,6 +21,8 @@ import {
 } from "../../../src/services/plugins/plugin-service.js";
 import {
   clearProjectPluginScopeCache,
+  isPluginEnabledForProject,
+  setPluginWorkspaceOwner,
   setProjectPluginEnabled,
   setProjectPluginScopeSource,
 } from "../../../src/services/plugins/project-plugin-scope.js";
@@ -140,7 +144,7 @@ describe("bb.experimental_projectScope", () => {
     delete (globalThis as Record<string, unknown>).__projectScope;
   });
 
-  it("reports the owner with its local paths on the server host and fires onChange on moves", async () => {
+  it("provisions a single-scope plugin's workspace on load and follows adopt and release", async () => {
     const entry = await service.installPath(
       await writePlugin(workDir, {
         name: "bb-plugin-master",
@@ -152,10 +156,26 @@ describe("bb.experimental_projectScope", () => {
     expect(entry.projectDefault).toBe("off");
     expect(state().initial).toBeNull();
 
-    setProjectPluginEnabled(db, notifier, {
-      projectId: alpha,
+    const home = getPluginOwnedProject(db, "master");
+    expect(home).not.toBeNull();
+    const homePath = join(dataDir, "plugins", "master", "workspace");
+    const provisioned = {
+      projectId: home?.id,
+      name: "Project scope fixture",
+      localPaths: [homePath],
+    };
+    await expect(state().get()).resolves.toEqual(provisioned);
+    expect(state().changes).toEqual([{ next: provisioned, previous: null }]);
+    expect(
+      isPluginEnabledForProject(db, {
+        pluginId: "master",
+        projectId: home!.id,
+      }),
+    ).toBe(true);
+
+    setPluginWorkspaceOwner(db, notifier, {
       pluginId: "master",
-      enabled: true,
+      projectId: alpha,
     });
     const owner = {
       projectId: alpha,
@@ -163,30 +183,26 @@ describe("bb.experimental_projectScope", () => {
       localPaths: ["/srv/alpha"],
     };
     await expect(state().get()).resolves.toEqual(owner);
-    expect(state().changes).toEqual([{ next: owner, previous: null }]);
+    expect(state().changes[1]).toEqual({ next: owner, previous: provisioned });
+    expect(getProject(db, home!.id)?.ownerKind).toBe("user");
+    expect(notifyProject).toHaveBeenCalledWith(alpha, [
+      "project-plugins-changed",
+    ]);
 
     setProjectPluginEnabled(db, notifier, {
       projectId: beta,
       pluginId: "master",
       enabled: true,
     });
-    const moved = { projectId: beta, name: "Beta", localPaths: [] };
-    await expect(state().get()).resolves.toEqual(moved);
-    expect(state().changes[1]).toEqual({ next: moved, previous: owner });
-    expect(notifyProject).toHaveBeenCalledWith(alpha, [
-      "project-plugins-changed",
-    ]);
-    expect(notifyProject).toHaveBeenCalledWith(beta, [
-      "project-plugins-changed",
-    ]);
+    await expect(state().get()).resolves.toEqual(owner);
+    expect(state().changes).toHaveLength(2);
 
-    setProjectPluginEnabled(db, notifier, {
-      projectId: beta,
+    setPluginWorkspaceOwner(db, notifier, {
       pluginId: "master",
-      enabled: false,
+      projectId: null,
     });
     await expect(state().get()).resolves.toBeNull();
-    expect(state().changes[2]).toEqual({ next: null, previous: moved });
+    expect(state().changes[2]).toEqual({ next: null, previous: owner });
     expect(state().changes).toHaveLength(3);
   });
 
