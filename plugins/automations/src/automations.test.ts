@@ -242,6 +242,9 @@ function createAutomationServiceBb() {
         spawn: async () => {
           throw new Error("not expected");
         },
+        unarchive: async () => {
+          throw new Error("not expected");
+        },
       },
     },
     server: { loopbackBaseUrl: "http://127.0.0.1:38886" },
@@ -375,6 +378,9 @@ describe("startup reconciliation", () => {
               throw new Error("not expected");
             },
             spawn: async () => {
+              throw new Error("not expected");
+            },
+            unarchive: async () => {
               throw new Error("not expected");
             },
           },
@@ -890,6 +896,9 @@ describe("automation data access", () => {
             spawn: async () => {
               throw new Error("not expected");
             },
+            unarchive: async () => {
+              throw new Error("not expected");
+            },
           },
         },
         server: { loopbackBaseUrl: "http://127.0.0.1:38886" },
@@ -1323,6 +1332,9 @@ describe("automation service", () => {
             throw new Error("not expected");
           },
           spawn: async () => {
+            throw new Error("not expected");
+          },
+          unarchive: async () => {
             throw new Error("not expected");
           },
         },

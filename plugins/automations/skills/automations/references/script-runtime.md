@@ -96,8 +96,9 @@ a `[bb] warning:` line. A later `bb` call then fails normally.
 - An unavailable target thread disables every enabled automation that targets
   the thread immediately. This path does not retry and does not use the failure
   count. The plugin treats a thread as unavailable when it is missing, deleted,
-  archived, pending, starting, or stopping. A target thread whose last turn
-  failed stays available: the next run starts a new turn in it.
+  pending, starting, or stopping. A run unarchives an archived target thread
+  and then sends to it. A target thread whose last turn failed stays
+  available: the next run starts a new turn in it.
 - Run completion, a timeout, or an output limit stops remaining processes in
   the script's process group. Scripts cannot leave background work running in
   that group after a run completes. On Windows, only the direct child is stopped.
