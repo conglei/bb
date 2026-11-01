@@ -70,11 +70,12 @@ vi.mock("@/hooks/queries/project-plugins-query", () => ({
 }));
 
 function RoutedProjectWorkspaceView() {
-  const params = useParams<{ projectId: string; viewKey: string }>();
+  const params = useParams<{ projectId: string; viewKey: string; "*": string }>();
   return (
     <ProjectWorkspaceView
       projectId={params.projectId ?? ""}
       viewKey={params.viewKey ?? null}
+      subPath={params["*"] ?? ""}
     />
   );
 }
@@ -131,10 +132,11 @@ describe("ProjectWorkspaceView", () => {
     function Today({
       projectId,
       isCompactViewport,
+      subPath,
     }: ExperimentalProjectViewProps) {
       return (
         <output data-testid="today">
-          {projectId}:{String(isCompactViewport)}
+          {projectId}:{String(isCompactViewport)}:{subPath}
         </output>
       );
     }
@@ -158,7 +160,29 @@ describe("ProjectWorkspaceView", () => {
       "/projects/proj_kept/views/kept.today",
     );
     expect(tabs[1]?.getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByTestId("today").textContent).toBe("proj_kept:false");
+    expect(screen.getByTestId("today").textContent).toBe("proj_kept:false:");
+  });
+
+  it("passes the route after the view key to the view as its sub-path", () => {
+    function Reviews({ subPath }: ExperimentalProjectViewProps) {
+      return <output data-testid="reviews">{subPath}</output>;
+    }
+    setPluginSlotRegistrations(
+      "kept",
+      makePluginRegistrationSet({
+        projectViews: [
+          { id: "reviews", title: "Reviews", icon: "Inbox", component: Reviews },
+        ],
+      }),
+    );
+
+    renderAt("/projects/proj_kept/views/kept.reviews/rev_1/evidence");
+
+    expect(screen.getByTestId("reviews").textContent).toBe(
+      "rev_1/evidence",
+    );
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs[1]?.getAttribute("aria-selected")).toBe("true");
   });
 
   it("hides the tab of a plugin turned off for the project and treats its view as unavailable", () => {

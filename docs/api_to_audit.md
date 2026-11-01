@@ -2423,6 +2423,17 @@ Docs: `frontend-core-slots.md`.
    reads its project's state with the `projectId` it receives. Audit the
    two together with this slot before any of them stabilizes.
 
+**Sub-paths.** The route is `/projects/:projectId/views/:viewKey/*`; the
+splat reaches the view as `subPath` (percent-encoded segments joined with
+`/`, `""` at the root), the way nav panels get theirs. `experimental_toProjectView(projectId,
+{ viewKey, subPath })` builds it through `getProjectViewRoutePath`, the pane
+model stores it (`PaneContent` `project-view.subPath`, persisted with a
+`""` default for older layouts) and a changed sub-path replaces the pane
+content in place. The first consumer is Kept, which deep-links a review from
+chat as `/projects/<keptProjectId>/views/kept.reviews/<reviewId>`. Audit:
+decide whether the default-view route should accept a sub-path too (today
+it does not: the default view is resolved client-side).
+
 ## `bb.experimental_projectSettings` (`@get-bb/plugin-sdk`)
 
 `bb.experimental_projectSettings.define(descriptors)` declares settings whose

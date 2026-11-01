@@ -373,7 +373,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   homepageSection: ["projectId"],
   settingsSection: [],
   experimental_appOverlay: [],
-  experimental_projectView: ["projectId", "isCompactViewport"],
+  experimental_projectView: ["projectId", "isCompactViewport", "subPath"],
   navPanel: ["subPath"],
   experimental_tab: ["threadId", "environment", "subPath", "params"],
   experimental_newThreadPanelAction: ["projectId", "params"],

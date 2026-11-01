@@ -71,10 +71,13 @@ export function paneContentRoute(content: PaneContent): string {
     return getPluginDetailRoutePath({ pluginId: content.pluginId });
   }
   if (content.kind === "project-view") {
-    return getProjectViewRoutePath(
+    const viewRoute = getProjectViewRoutePath(
       content.projectId,
       content.viewKey ?? undefined,
     );
+    return content.viewKey === null || content.subPath === ""
+      ? viewRoute
+      : `${viewRoute}/${content.subPath}`;
   }
   const panelRoute = getPluginPanelRoutePath({
     pluginId: content.pluginId,
@@ -125,6 +128,7 @@ export function paneContentForPathname(pathname: string): PaneContent | null {
       kind: "project-view",
       projectId: decodePluginRouteParam(projectView.params.projectId),
       viewKey: decodePluginRouteParam(projectView.params.viewKey),
+      subPath: projectView.params["*"] ?? "",
     };
   }
   const projectDefaultView = matchPath(
@@ -136,6 +140,7 @@ export function paneContentForPathname(pathname: string): PaneContent | null {
       kind: "project-view",
       projectId: decodePluginRouteParam(projectDefaultView.params.projectId),
       viewKey: null,
+      subPath: "",
     };
   }
   const detail = matchPath(PLUGIN_DETAIL_ROUTE_PATH, pathname);
@@ -172,7 +177,8 @@ export function reconcileLayoutForContent(
         existing.content.subPath !== content.subPath) ||
       (existing.content.kind === "project-view" &&
         content.kind === "project-view" &&
-        existing.content.viewKey !== content.viewKey)
+        (existing.content.viewKey !== content.viewKey ||
+          existing.content.subPath !== content.subPath))
         ? replacePaneContent(layout, existing.paneId, content)
         : layout;
     return withRouteState.focusedPaneId === existing.paneId

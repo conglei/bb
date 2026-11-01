@@ -1003,6 +1003,15 @@ export interface ExperimentalProjectViewProps {
   projectId: string;
   /** Phone-width layout; the tab strip scrolls horizontally there. */
   isCompactViewport: boolean;
+  /**
+   * The route segments after the view key, percent-encoded and joined with
+   * `/`, or `""` at the view's root: `/projects/<id>/views/kept.reviews/rev_1`
+   * gives `"rev_1"`. Decode each segment with `decodeURIComponent`. Set it
+   * with `useBbNavigate().experimental_toProjectView(projectId, { viewKey,
+   * subPath })` or a Markdown link to that route, so a chat message can
+   * deep-link into one item of a view. Experimental: see docs/api_to_audit.md.
+   */
+  subPath: string;
 }
 
 /**
@@ -5225,11 +5234,13 @@ export interface BbNavigate {
   /**
    * Open a project's page on one of its views. `viewKey` is
    * `<pluginId>.<viewId>`; omitted, the page opens on its default view.
+   * `subPath` targets a location inside the view as unencoded `/`-separated
+   * segments; the view's `subPath` prop receives them percent-encoded.
    * Experimental: see docs/api_to_audit.md.
    */
   experimental_toProjectView(
     projectId: string,
-    options?: { viewKey?: string },
+    options?: { viewKey?: string; subPath?: string },
   ): void;
   /**
    * Navigate to one of this plugin's own nav panels by its `path`.

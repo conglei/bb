@@ -1188,6 +1188,7 @@ function StandalonePaneContent({
       <ProjectWorkspaceView
         projectId={content.projectId}
         viewKey={content.viewKey}
+        subPath={content.subPath}
       />
     );
   }
@@ -1451,6 +1452,7 @@ function NonThreadPaneContent({
           <ProjectWorkspaceView
             projectId={content.projectId}
             viewKey={content.viewKey}
+            subPath={content.subPath}
           />
         ) : (
           <PluginPanelView

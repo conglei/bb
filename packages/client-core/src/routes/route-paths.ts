@@ -54,7 +54,7 @@ const PROJECTLESS_THREAD_DETAIL_ROUTE_PATH = "/threads/:threadId";
 export const LEGACY_PROJECT_SETTINGS_ROUTE_PATH =
   "/projects/:projectId/settings";
 export const PROJECT_ARCHIVED_ROUTE_PATH = "/projects/:projectId/archived";
-export const PROJECT_VIEW_ROUTE_PATH = "/projects/:projectId/views/:viewKey";
+export const PROJECT_VIEW_ROUTE_PATH = "/projects/:projectId/views/:viewKey/*";
 export const PROJECT_DEFAULT_VIEW_ROUTE_PATH = "/projects/:projectId/views";
 export const CORE_PROJECT_VIEW_PLUGIN_ID = "core";
 export const DEFAULT_PROJECT_VIEW_KEY = "core.threads";
@@ -104,11 +104,18 @@ export function parseProjectViewKey(
 export function getProjectViewRoutePath(
   projectId: string,
   viewKey?: string,
+  subPath?: string,
 ): string {
   const base = `/projects/${encodeURIComponent(projectId)}/views`;
-  return viewKey === undefined
-    ? base
-    : `${base}/${encodeURIComponent(viewKey)}`;
+  if (viewKey === undefined) return base;
+  const viewRoute = `${base}/${encodeURIComponent(viewKey)}`;
+  if (subPath === undefined || subPath === "") return viewRoute;
+  const encoded = subPath
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return encoded === "" ? viewRoute : `${viewRoute}/${encoded}`;
 }
 
 export function getSettingsRoutePath(section?: string): string {

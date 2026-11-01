@@ -22,6 +22,7 @@ import {
 interface ProjectWorkspaceViewProps {
   projectId: string;
   viewKey: string | null;
+  subPath: string;
 }
 
 export function projectViewKeyOf(view: ExperimentalProjectViewSlot): string {
@@ -124,6 +125,7 @@ export function selectProjectViews(
 export function ProjectWorkspaceView({
   projectId,
   viewKey,
+  subPath,
 }: ProjectWorkspaceViewProps) {
   const { projectViews: registeredViews } = usePluginSlots();
   const pluginsSettled = usePluginFrontendsSettled();
@@ -178,6 +180,7 @@ export function ProjectWorkspaceView({
               <view.component
                 projectId={projectId}
                 isCompactViewport={isCompactViewport}
+                subPath={subPath}
               />
             </PluginSlotMount>
           </div>
