@@ -5034,6 +5034,22 @@ export interface MarkdownProps {
     rootPath: string;
     target: Exclude<ExperimentalLiveFileTarget, { kind: "host" }>;
   };
+  /**
+   * Mount the code-fence renderers plugins registered with
+   * `app.slots.experimental_codeFenceRenderer` for this content, as a message
+   * timeline does. The identity is what those renderers receive as `message`
+   * and key their state by, so give the content a stable `id` (a record id,
+   * not a hash of the text) and the thread it belongs to. Omission renders
+   * every fence as bb's code block.
+   *
+   * @experimental Audit before relying on this as a stable contract.
+   */
+  experimental_codeFences?: {
+    id: string;
+    threadId: string;
+    turnId?: string | null;
+    projectId?: string | null;
+  };
 }
 
 /**
