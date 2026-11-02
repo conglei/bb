@@ -52,6 +52,7 @@ export const UI_PREFERENCE_KEYS = [
   "composer.provider",
   "infoPanel.collapsedSections",
   "threadContextCard.pinned",
+  "home.projectId",
 ] as const;
 export type UiPreferenceKey = (typeof UI_PREFERENCE_KEYS)[number];
 const uiPreferenceKeySchema = z.enum(UI_PREFERENCE_KEYS);
@@ -175,6 +176,11 @@ export const uiPreferenceDefinitions = {
     ]),
     [],
     "Thread Info panel section ids that are collapsed, such as forks, threadStorage, or <pluginId>/<sectionId> for plugin sections like bb--git/commits and bb--git/uncommitted-changes. Legacy commits and uncommittedChanges resolve to the Git plugin's sections.",
+  ),
+  "home.projectId": defineUiPreference(
+    uiPreferenceStringSchema.nullable(),
+    null,
+    "Project whose page opens when the app starts and from Home in the sidebar, on the project's default view; null opens the new-thread screen. A project that no longer exists falls back to the new-thread screen.",
   ),
 } as const satisfies Record<UiPreferenceKey, UiPreferenceDefinition>;
 

@@ -38,6 +38,7 @@ import {
   getRootComposeRoutePath,
   SETTINGS_ROUTE_PATH,
 } from "@/lib/route-paths";
+import { useHomeRoute } from "@/lib/home-route";
 import type { PaneContent } from "@/lib/split-layout";
 import {
   NavigationBadgeSources,
@@ -231,17 +232,25 @@ export function SidebarNavigationModelProvider({
     getPluginPanelRoutePluginId(location.pathname) === null &&
     (activeItemId === null || activeItemId === NEW_THREAD_NAVIGATION_ITEM_ID);
   const currentRoutePath = `${location.pathname}${location.search}${location.hash}`;
+  const homeRoute = useHomeRoute();
   const homeRoutePathRef = useRef(
-    isHomeActive ? currentRoutePath : getRootComposeRoutePath(),
+    isHomeActive ? currentRoutePath : homeRoute.path,
   );
+  const visitedHomeRef = useRef(isHomeActive);
   useEffect(() => {
-    if (isHomeActive) homeRoutePathRef.current = currentRoutePath;
-  }, [currentRoutePath, isHomeActive]);
+    if (isHomeActive) {
+      homeRoutePathRef.current = currentRoutePath;
+      visitedHomeRef.current = true;
+    } else if (!visitedHomeRef.current) {
+      homeRoutePathRef.current = homeRoute.path;
+    }
+  }, [currentRoutePath, homeRoute.path, isHomeActive]);
 
   const latest = useRef({
     arrangement,
     commandRunner,
     host,
+    homeRoutePath: homeRoute.path,
     isHomeActive,
     items,
     navigate,
@@ -254,6 +263,7 @@ export function SidebarNavigationModelProvider({
       arrangement,
       commandRunner,
       host,
+      homeRoutePath: homeRoute.path,
       isHomeActive,
       items,
       navigate,
@@ -351,7 +361,7 @@ export function SidebarNavigationModelProvider({
       goHome(options) {
         const current = latest.current;
         if (options?.target === "tab") {
-          openInBrowserTab(getRootComposeRoutePath());
+          openInBrowserTab(current.homeRoutePath);
           return;
         }
         if (current.isHomeActive) return;

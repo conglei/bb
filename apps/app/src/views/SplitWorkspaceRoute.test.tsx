@@ -37,6 +37,14 @@ vi.mock("./thread-detail/SplitThreadArea", () => ({
   },
 }));
 
+const homeRouteMock = vi.hoisted(() => ({
+  current: { path: "/", projectId: null as string | null, loaded: true },
+}));
+
+vi.mock("@/lib/home-route", () => ({
+  useHomeRoute: () => homeRouteMock.current,
+}));
+
 vi.mock("./LegacyProjectComposeRedirect", () => ({
   LegacyProjectComposeRedirect: () => <div>legacy redirect</div>,
 }));
@@ -64,6 +72,45 @@ describe("SplitWorkspaceRoute", () => {
   beforeEach(() => {
     workspaceLifecycle.mounts = 0;
     workspaceLifecycle.unmounts = 0;
+    homeRouteMock.current = { path: "/", projectId: null, loaded: true };
+  });
+
+  it("opens the home project on the launch entry only, and compose when asked for it later", () => {
+    homeRouteMock.current = {
+      path: "/projects/proj_kept/views",
+      projectId: "proj_kept",
+      loaded: true,
+    };
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <NavigationControls />
+        <Routes>
+          <Route path="*" element={<SplitWorkspaceRoute />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("route-content").textContent).toBe(
+      "project-view",
+    );
+    expect(
+      screen.getByTestId("route-content").getAttribute("data-route"),
+    ).toBe("/projects/proj_kept/views");
+
+    fireEvent.click(screen.getByRole("button", { name: "compose" }));
+    expect(screen.getByTestId("route-content").textContent).toBe("new-thread");
+  });
+
+  it("waits for the home preference before showing the launch page", () => {
+    homeRouteMock.current = { path: "/", projectId: null, loaded: false };
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="*" element={<SplitWorkspaceRoute />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByTestId("route-content")).toBeNull();
   });
 
   it("preserves the workspace mount across focus-driven page URL changes", () => {

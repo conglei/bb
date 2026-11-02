@@ -36,6 +36,10 @@ const viewportState = vi.hoisted(
   }),
 );
 
+vi.mock("@/lib/home-route", () => ({
+  useHomeRoute: () => ({ path: "/", projectId: null, loaded: true }),
+}));
+
 vi.mock("@bb/shared-ui/hooks/use-compact-viewport", () => ({
   useIsCompactViewport: () => viewportState.compact,
   CompactViewportOverrideProvider: ({ children }: { children: ReactNode }) => (

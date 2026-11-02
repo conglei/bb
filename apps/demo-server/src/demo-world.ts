@@ -190,6 +190,7 @@ function createUiPreferences(): UiPreferenceEntries {
       "infoPanel.collapsedSections",
     ),
     "threadContextCard.pinned": uiPreferenceEntry("threadContextCard.pinned"),
+    "home.projectId": uiPreferenceEntry("home.projectId"),
   };
 }
 

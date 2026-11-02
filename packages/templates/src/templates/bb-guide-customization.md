@@ -292,8 +292,12 @@ Sidebar preferences
 
 `bb settings ui` reads and writes server-side sidebar preferences shared by
 every window, device, and the CLI. The same registry stores which thread Info
-panel sections are collapsed (`infoPanel.collapsedSections`) and whether a
-thread pane's thread context card stays pinned open (`threadContextCard.pinned`).
+panel sections are collapsed (`infoPanel.collapsedSections`), whether a
+thread pane's thread context card stays pinned open (`threadContextCard.pinned`),
+and the home page (`home.projectId`: a project id to open that project's page,
+on its default view, when the app starts and from Home in the sidebar; `null`,
+the default, opens the new-thread screen. Settings → General → Home page sets
+the same key).
 
 bb settings ui list [--json]
 bb settings ui get <key> [--json]
