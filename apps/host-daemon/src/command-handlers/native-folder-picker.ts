@@ -7,9 +7,9 @@ import { ExpectedCommandDispatchError } from "../command-dispatch-support.js";
 
 const execFileAsync = execHostFile;
 
-export const CHOOSE_FOLDER_SCRIPT = [
+const CHOOSE_FOLDER_SCRIPT = [
   "activate",
-  "with timeout of 86400 seconds",
+  "with timeout of 600 seconds",
   "try",
   'POSIX path of (choose folder with prompt "Choose a project folder")',
   "on error number -128",
