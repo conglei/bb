@@ -75,6 +75,10 @@ const mocks = vi.hoisted(() => ({
   onNewChat: vi.fn(),
 }));
 
+vi.mock("@/lib/home-route", () => ({
+  useHomeRoute: () => ({ path: "/", projectId: null, loaded: true }),
+}));
+
 vi.mock("@/components/commands/AppCommandProvider", () => ({
   useAppCommandRunner: () => ({
     dispatch: mocks.dispatch,

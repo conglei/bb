@@ -16,6 +16,7 @@ import { useRouteState } from "@/hooks/useRouteState";
 import { LegacyProjectComposeRedirect } from "./LegacyProjectComposeRedirect";
 import { SplitThreadArea } from "./thread-detail/SplitThreadArea";
 import { paneContentForPathname } from "./thread-detail/splitThreadNavigation";
+import { useHomeRoute } from "@/lib/home-route";
 import { LazyPluginsView } from "./ToolsViewSplits";
 
 disableGlobalCursorStyles();
@@ -51,6 +52,8 @@ export default function SplitWorkspaceRoute() {
   }, [isThreadView, location.pathname, projectId, threadId]);
 
   const layout = useAtomValue(splitLayoutAtom);
+  const homeRoute = useHomeRoute();
+  const isLaunchEntry = location.key === "default";
 
   const legacyProjectId = legacyProjectMatch?.params.projectId;
   if (legacyProjectId) {
@@ -58,6 +61,12 @@ export default function SplitWorkspaceRoute() {
   }
   if (routeContent === null) {
     return <Navigate to={APP_ROOT_ROUTE_PATH} replace />;
+  }
+  if (isLaunchEntry && location.pathname === APP_ROOT_ROUTE_PATH) {
+    if (!homeRoute.loaded) return null;
+    if (homeRoute.projectId !== null) {
+      return <Navigate to={homeRoute.path} replace />;
+    }
   }
   if (
     routeContent.kind === "plugin-detail" &&

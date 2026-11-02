@@ -138,6 +138,9 @@ export function sidebarBootstrap(
   const project: ProjectWithThreadsResponse = {
     id: DEMO_PROJECT_ID,
     kind: "standard",
+    icon: null,
+    ownerKind: "user",
+    ownerPluginId: null,
     name: "demo-app",
     gitRemoteUrl: null,
     createdAt,
@@ -149,6 +152,9 @@ export function sidebarBootstrap(
   const personalProject: ProjectWithThreadsResponse = {
     id: DEMO_PERSONAL_PROJECT_ID,
     kind: "standard",
+    icon: null,
+    ownerKind: "user",
+    ownerPluginId: null,
     name: "Personal",
     gitRemoteUrl: null,
     createdAt,

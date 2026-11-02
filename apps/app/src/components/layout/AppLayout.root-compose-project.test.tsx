@@ -23,6 +23,10 @@ const mockUseThread = vi.hoisted(() => vi.fn());
 const mockUseThreadDetailBootstrap = vi.hoisted(() => vi.fn());
 const commandHandlers = vi.hoisted(() => new Map<string, () => boolean>());
 
+vi.mock("@/lib/home-route", () => ({
+  useHomeRoute: () => ({ path: "/", projectId: null, loaded: true }),
+}));
+
 vi.mock("@/components/commands/AppCommandProvider", () => ({
   useIndexedAppCommandHandlers: () => {},
   useAppCommandHandler: (command: string, handler: () => boolean) => {

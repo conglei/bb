@@ -37,6 +37,10 @@ import { registerNavigationPlugin } from "@/test/fixtures/navigation-plugin";
 import { AppLayoutSidebar } from "./AppLayoutSidebar";
 import { resolveRouteSidebar } from "./routeSidebar";
 
+vi.mock("@/lib/home-route", () => ({
+  useHomeRoute: () => ({ path: "/", projectId: null, loaded: true }),
+}));
+
 vi.mock("@/views/useMobileRecentsThreadReveal", () => ({
   useMobileRecentsThreadReveal: () => {},
 }));

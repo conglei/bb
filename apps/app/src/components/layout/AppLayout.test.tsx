@@ -56,6 +56,10 @@ const SETTINGS_ROUTE = "/settings/providers/codex?tab=models#preferred";
 const PLUGINS_ROUTE = "/plugins/ui-patterns?tab=settings#source";
 const SECONDARY_ROUTES = [SETTINGS_ROUTE, PLUGINS_ROUTE];
 
+vi.mock("@/lib/home-route", () => ({
+  useHomeRoute: () => ({ path: "/", projectId: null, loaded: true }),
+}));
+
 vi.mock("./AppLayoutSidebar", async () => {
   const { Sidebar } = await vi.importActual<
     typeof import("@/components/ui/sidebar")

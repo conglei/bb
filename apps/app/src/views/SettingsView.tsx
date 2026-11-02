@@ -1,4 +1,7 @@
 import { ApplicationLinkApprovalsSettings } from "@/components/settings/ApplicationLinkApprovalsSettings";
+import { useAtom } from "jotai";
+import { homeProjectIdAtom } from "@/lib/home-route";
+import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { MobileAppSection } from "@/components/settings/MobileAppSection";
 import { MachineEnvironmentSettings } from "@/components/settings/MachineEnvironmentSettings";
 import { MachineAccessSettings } from "@/components/settings/MachineAccessSettings";
@@ -366,6 +369,78 @@ function FaviconColorSettingsControl({
                 className={cn(
                   "ml-auto",
                   faviconColor !== option.value && "opacity-0",
+                  COARSE_POINTER_ICON_SIZE_CLASS,
+                )}
+              />
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SettingsWithControl>
+  );
+}
+
+const HOME_PAGE_NEW_THREAD_LABEL = "New thread";
+
+function HomePageSettingsControl() {
+  const [homeProjectId, setHomeProjectId] = useAtom(homeProjectIdAtom);
+  const navigation = useSidebarNavigation();
+  const projects = navigation.data?.projects ?? [];
+  const selected =
+    homeProjectId === null
+      ? null
+      : (projects.find((project) => project.id === homeProjectId) ?? null);
+  const label =
+    homeProjectId === null
+      ? HOME_PAGE_NEW_THREAD_LABEL
+      : (selected?.name ?? HOME_PAGE_NEW_THREAD_LABEL);
+  return (
+    <SettingsWithControl
+      label="Home page"
+      description="What opens when bb starts and when you choose Home in the sidebar. A project opens on its default view."
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={SETTINGS_DROPDOWN_TRIGGER_CLASS}
+            aria-label="Home page"
+          >
+            <span className="min-w-0 truncate">{label}</span>
+            <Icon
+              name="ChevronDown"
+              className="size-3.5 text-muted-foreground"
+            />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className={SETTINGS_DROPDOWN_CONTENT_CLASS}
+        >
+          <DropdownMenuItem onSelect={() => setHomeProjectId(null)}>
+            {HOME_PAGE_NEW_THREAD_LABEL}
+            <Icon
+              name="Check"
+              className={cn(
+                "ml-auto",
+                homeProjectId !== null && "opacity-0",
+                COARSE_POINTER_ICON_SIZE_CLASS,
+              )}
+            />
+          </DropdownMenuItem>
+          {projects.length > 0 ? <DropdownMenuSeparator /> : null}
+          {projects.map((project) => (
+            <DropdownMenuItem
+              key={project.id}
+              onSelect={() => setHomeProjectId(project.id)}
+            >
+              <span className="min-w-0 truncate">{project.name}</span>
+              <Icon
+                name="Check"
+                className={cn(
+                  "ml-auto",
+                  homeProjectId !== project.id && "opacity-0",
                   COARSE_POINTER_ICON_SIZE_CLASS,
                 )}
               />
@@ -1034,6 +1109,7 @@ export function GeneralSettingsSection({
               />
             </SettingsWithControl>
           ) : null}
+          <HomePageSettingsControl />
           <ApplicationLinkApprovalsSettings />
         </div>
       </SettingsSection>
