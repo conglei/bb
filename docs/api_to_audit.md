@@ -3664,6 +3664,28 @@ workspace. Omitting it keeps message routing.
 Stabilize after plugin consumers verify nested paths, source identity, missing
 files, containment and line locations.
 
+## Markdown code fences (`MarkdownProps.experimental_codeFences`)
+
+With `{ id, threadId, turnId?, projectId? }`, the Markdown component hosts the
+code-fence renderers plugins registered with
+`app.slots.experimental_codeFenceRenderer`, exactly as an assistant message
+does: the same registry, the same `CodeFenceRendererHost`, `status` always
+`"closed"` (plugin content does not stream), and the given identity passed as
+the renderer's `message`, which renderers key persisted state by. Omitting it
+keeps every fence as bb's code block, as before.
+
+**Core callers.** `ConversationMessageContent` wraps the same host around
+message Markdown; `PluginMarkdown` is the plugin path to it.
+
+**Audit before stabilizing.**
+
+1. Decide whether plugin content should ever report `"unclosed"` (an
+   interrupted fence) instead of `"closed"`.
+2. Verify renderers that read `message.threadId` for thread actions behave
+   when the identity names a thread the viewer is not looking at.
+3. Consider deriving an identity when none is given, so a `Markdown` with
+   fences never silently falls back to a code block.
+
 ## `PluginFileOpenerProps.experimental_lineRange` (`@get-bb/plugin-sdk/app`)
 
 Passes the owning file tab's latest one-based, inclusive
