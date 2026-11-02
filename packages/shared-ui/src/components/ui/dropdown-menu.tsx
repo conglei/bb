@@ -6,6 +6,7 @@ import { cn } from "../../lib/utils";
 import { usePortalScopeProps } from "../../lib/portal-scope";
 import { COARSE_POINTER_CHECK_SLOT_CLASS } from "./coarse-pointer-sizing.js";
 import {
+  type CompactMenuPresentation,
   type ResponsiveOverlayContextValue,
   COMPACT_SHEET_CONTENT_STYLE,
   useResponsiveRoot,
@@ -13,6 +14,10 @@ import {
   ResponsiveDrawerShell,
   stripRadixContentProps,
 } from "./responsive-overlay.js";
+import {
+  AnchoredMenuShell,
+  type CompactMenuAnchor,
+} from "./anchored-menu-shell.js";
 import {
   blurActiveKeyboardInputBeforeOverlayOpen,
   getOverlayTriggerClassName,
@@ -34,6 +39,12 @@ const MENU_ITEM_DESTRUCTIVE_STATE_CLASS =
   "text-destructive focus:bg-destructive/15 focus:text-destructive data-[last-hovered]:bg-destructive/15";
 const MENU_ITEM_DESTRUCTIVE_TOUCH_CLASS =
   "text-destructive focus:bg-destructive/15 focus:text-destructive active:bg-destructive/20 active:text-destructive";
+const MENU_ITEM_SHEET_CLASS =
+  "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-[0.3125rem] max-md:pointer-coarse:py-2 text-left text-xs outline-none transition-colors focus:bg-state-hover focus:text-foreground active:bg-state-active active:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>[data-icon-root]]:size-4 [&>[data-icon-root]]:shrink-0";
+const MENU_ITEM_ANCHORED_CLASS =
+  "relative flex w-full min-h-11 cursor-default select-none items-center gap-3 px-4 py-2.5 text-left text-sm outline-none transition-colors focus-visible:bg-state-hover active:bg-state-active active:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>[data-icon-root]]:size-[1.125rem] [&>[data-icon-root]]:shrink-0 [&>[data-icon-root]:first-child]:order-last [&>[data-icon-root]:first-child]:ml-auto";
+const MENU_ITEM_ANCHORED_DESTRUCTIVE_CLASS =
+  "text-destructive focus-visible:bg-destructive/15 active:bg-destructive/20 active:text-destructive";
 
 const RESPONSIVE_MENU_CONTEXT_KEY = Symbol.for("bb.responsive-menu-context.v1");
 
@@ -153,6 +164,8 @@ const DropdownMenuContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
     mobileTitle?: string;
+    compactPresentation?: CompactMenuPresentation;
+    compactAnchor?: CompactMenuAnchor | null;
   }
 >(
   (
@@ -161,13 +174,50 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset = 4,
       children,
       mobileTitle,
+      compactPresentation = "sheet",
+      compactAnchor = null,
       onCloseAutoFocus,
       ...props
     },
     ref,
   ) => {
-    const { isCompactViewport, open, onOpenChange } = useResponsiveMenu();
+    const menu = useResponsiveMenu();
+    const { isCompactViewport, open, onOpenChange } = menu;
     const scopeProps = usePortalScopeProps();
+    const anchoredMenu = React.useMemo<ResponsiveOverlayContextValue>(
+      () => ({ ...menu, compactPresentation: "anchored" }),
+      [menu],
+    );
+
+    if (
+      isCompactViewport &&
+      compactPresentation === "anchored" &&
+      compactAnchor !== null
+    ) {
+      const { style, ...domProps } = stripRadixContentProps(props);
+      return (
+        <AnchoredMenuShell
+          open={open}
+          onOpenChange={onOpenChange}
+          anchor={compactAnchor}
+          srLabel={mobileTitle ?? "Menu"}
+          onEscapeKeyDown={props.onEscapeKeyDown}
+          onPointerDownOutside={props.onPointerDownOutside}
+          onInteractOutside={props.onInteractOutside}
+        >
+          <ResponsiveMenuContext.Provider value={anchoredMenu}>
+            <div
+              ref={ref}
+              className={cn("flex flex-col", className)}
+              {...domProps}
+              style={{ ...style, ...COMPACT_SHEET_CONTENT_STYLE }}
+            >
+              {children}
+            </div>
+          </ResponsiveMenuContext.Provider>
+        </AnchoredMenuShell>
+      );
+    }
 
     if (isCompactViewport) {
       const { style, ...domProps } = stripRadixContentProps(props);
@@ -264,7 +314,8 @@ const DropdownMenuItem = React.forwardRef<
     },
     ref,
   ) => {
-    const { isCompactViewport, open, onOpenChange } = useResponsiveMenu();
+    const { isCompactViewport, open, onOpenChange, compactPresentation } =
+      useResponsiveMenu();
     const { hoverProps } = useMenuItemHover({
       onPointerEnter: callerPointerEnter,
       onKeyDown: callerKeyDown,
@@ -278,8 +329,10 @@ const DropdownMenuItem = React.forwardRef<
 
     if (isCompactViewport) {
       const Comp = asChild ? Slot : "button";
+      const anchored = compactPresentation === "anchored";
       return (
         <Comp
+          {...domProps}
           ref={ref as React.RefCallback<HTMLButtonElement> | null}
           type={asChild ? undefined : "button"}
           role={role}
@@ -287,9 +340,12 @@ const DropdownMenuItem = React.forwardRef<
           aria-disabled={disabled || undefined}
           aria-checked={ariaChecked}
           className={cn(
-            "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-[0.3125rem] max-md:pointer-coarse:py-2 text-left text-xs outline-none transition-colors focus:bg-state-hover focus:text-foreground active:bg-state-active active:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>[data-icon-root]]:size-4 [&>[data-icon-root]]:shrink-0",
-            inset && "pl-8",
-            variant === "destructive" && MENU_ITEM_DESTRUCTIVE_TOUCH_CLASS,
+            anchored ? MENU_ITEM_ANCHORED_CLASS : MENU_ITEM_SHEET_CLASS,
+            inset && (anchored ? "pl-10" : "pl-8"),
+            variant === "destructive" &&
+              (anchored
+                ? MENU_ITEM_ANCHORED_DESTRUCTIVE_CLASS
+                : MENU_ITEM_DESTRUCTIVE_TOUCH_CLASS),
             className,
           )}
           data-disabled={disabled ? "" : undefined}
@@ -515,15 +571,18 @@ const DropdownMenuLabel = React.forwardRef<
     inset?: boolean;
   }
 >(({ className, inset, children, ...props }, ref) => {
-  const { isCompactViewport } = useResponsiveMenu();
+  const { isCompactViewport, compactPresentation } = useResponsiveMenu();
 
   if (isCompactViewport) {
+    const anchored = compactPresentation === "anchored";
     return (
       <div
         ref={ref}
         className={cn(
-          "px-2 py-[0.3125rem] max-md:pointer-coarse:py-1.5 text-xs font-medium text-muted-foreground",
-          inset && "pl-8",
+          anchored
+            ? "px-4 py-2 text-xs font-medium text-muted-foreground"
+            : "px-2 py-[0.3125rem] max-md:pointer-coarse:py-1.5 text-xs font-medium text-muted-foreground",
+          inset && (anchored ? "pl-10" : "pl-8"),
           className,
         )}
       >
@@ -552,13 +611,18 @@ const DropdownMenuSeparator = React.forwardRef<
   HTMLHRElement,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
 >(({ className, ...props }, ref) => {
-  const { isCompactViewport } = useResponsiveMenu();
+  const { isCompactViewport, compactPresentation } = useResponsiveMenu();
 
   if (isCompactViewport) {
     return (
       <hr
         ref={ref as React.RefCallback<HTMLHRElement> | null}
-        className={cn("-mx-1 my-1 h-px border-0 bg-muted", className)}
+        className={cn(
+          compactPresentation === "anchored"
+            ? "m-0 h-2 shrink-0 border-0 bg-muted"
+            : "-mx-1 my-1 h-px border-0 bg-muted",
+          className,
+        )}
       />
     );
   }

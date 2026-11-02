@@ -144,8 +144,15 @@ interface SurfaceOptions {
 interface Surface {
   name: string;
   compact: boolean;
+  longPress?: boolean;
   render(options: SurfaceOptions): ReactElement;
   open(): Promise<void>;
+}
+
+const MORE = "More…";
+
+function longPressRow() {
+  fireEvent.contextMenu(screen.getAllByText("Row")[0]!);
 }
 
 const SURFACES: readonly Surface[] = [
@@ -209,6 +216,7 @@ const SURFACES: readonly Surface[] = [
   {
     name: "compact long press",
     compact: true,
+    longPress: true,
     render: ({ thread, inline, requestRename }) => (
       <ThreadActionsContextMenu
         thread={threadListEntryActionTarget(thread)}
@@ -219,7 +227,10 @@ const SURFACES: readonly Surface[] = [
       </ThreadActionsContextMenu>
     ),
     open: async () => {
-      fireEvent.contextMenu(screen.getByText("Row"));
+      longPressRow();
+      await openMenu();
+      const more = screen.queryByRole("menuitem", { name: MORE });
+      if (more !== null) fireEvent.click(more);
     },
   },
 ];
@@ -335,6 +346,10 @@ async function menuRows(): Promise<string[]> {
     );
 }
 
+function withDeleteLast(rows: readonly string[]): string[] {
+  return [...rows.filter((row) => row !== "Delete"), "---", "Delete"];
+}
+
 async function choose(surface: Surface, actionLabel: string, choice: string) {
   const trigger = await screen.findByRole("menuitem", { name: actionLabel });
   if (surface.compact) fireEvent.click(trigger);
@@ -420,6 +435,25 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
         "---",
         "Notifications",
       ],
+      longPress: [
+        "Copy link",
+        "New thread in environment",
+        "---",
+        "Pin",
+        "Mark unread",
+        "---",
+        "Rename",
+        "Regenerate title",
+        "Move to section",
+        "---",
+        "Customize actions",
+        "---",
+        "Archive",
+        "---",
+        "Notifications",
+        "---",
+        "Delete",
+      ],
     },
     {
       state: "an archived, pinned, unread child thread",
@@ -468,6 +502,24 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
         "Delete",
         "---",
         "Notifications",
+      ],
+      longPress: [
+        "Copy link",
+        "---",
+        "Unpin",
+        "Mark read",
+        "Notify parent, Auto",
+        "---",
+        "Rename",
+        "Regenerate title",
+        "---",
+        "Customize actions",
+        "---",
+        "Unarchive",
+        "---",
+        "Notifications",
+        "---",
+        "Delete",
       ],
     },
     {
@@ -602,14 +654,20 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
     },
   ])(
     "lists the items for $state",
-    async ({ thread, route, layout, desktop, compact }) => {
+    async ({ thread, route, layout, desktop, compact, longPress }) => {
       renderSurface(
         surface,
         { thread, inline: [CUSTOMIZE] },
         { route, layout },
       );
       await surface.open();
-      expect(await menuRows()).toEqual(surface.compact ? compact : desktop);
+      expect(await menuRows()).toEqual(
+        surface.longPress
+          ? (longPress ?? withDeleteLast(compact))
+          : surface.compact
+            ? compact
+            : desktop,
+      );
     },
   );
 
@@ -750,6 +808,131 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
     expect(within(menu).getByRole("menuitem", { name: "Pin" })).not.toBeNull();
     expect(within(menu).queryByRole("menuitem", { name: "Boom" })).toBeNull();
     expect(error).toHaveBeenCalled();
+  });
+});
+
+describe("thread actions on a long press", () => {
+  const surface = SURFACES.find((candidate) => candidate.longPress);
+  if (surface === undefined) throw new Error("no long-press surface");
+  const notificationsAction: PluginThreadActionRegistration = {
+    id: "notifications",
+    title: "Notifications",
+    icon: "BellDot",
+    group: experimental_THREAD_ACTION_GROUPS.state,
+    order: 50,
+    item: () => ({
+      label: "Notifications",
+      detail: "All",
+      icon: "BellDot",
+      choices: {
+        heading: "Notify me about",
+        items: [
+          { id: "all", label: "All", selected: true },
+          { id: "none", label: "None" },
+        ],
+        hint: "Limited by a parent thread",
+      },
+      run: vi.fn(),
+    }),
+  };
+
+  function renderLongPress() {
+    const view = renderSurface(surface, {
+      thread: baseThread,
+      inline: [CUSTOMIZE],
+    });
+    setPluginSlotRegistrations(
+      "push-notifications",
+      makePluginRegistrationSet({ threadActions: [notificationsAction] }),
+    );
+    return view;
+  }
+
+  it("opens on the quick actions with Delete apart and the rest behind More…", async () => {
+    renderLongPress();
+    longPressRow();
+    expect(await menuRows()).toEqual([
+      "Pin",
+      "Mark unread",
+      "Notifications, All",
+      "Rename",
+      "Archive",
+      "---",
+      MORE,
+      "---",
+      "Delete",
+    ]);
+
+    fireEvent.click(screen.getByRole("menuitem", { name: MORE }));
+    expect(await menuRows()).toEqual([
+      "Copy link",
+      "New thread in environment",
+      "---",
+      "Pin",
+      "Mark unread",
+      "Notifications, All",
+      "---",
+      "Rename",
+      "Regenerate title",
+      "Move to section",
+      "---",
+      "Customize actions",
+      "---",
+      "Archive",
+      "---",
+      "Notifications",
+      "---",
+      "Delete",
+    ]);
+    expect(screen.queryByRole("menuitem", { name: MORE })).toBeNull();
+  });
+
+  it("expands a submenu in place, checks the current choice, and collapses again", async () => {
+    renderLongPress();
+    longPressRow();
+    const trigger = await screen.findByRole("menuitem", {
+      name: "Notifications, All",
+    });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("menuitem", { name: "None" })).toBeNull();
+
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.getByRole("menuitem", { name: "All" }).getAttribute("aria-current"),
+    ).toBe("true");
+    expect(screen.getByText("Limited by a parent thread")).toBeTruthy();
+    expect(await menuRows()).toEqual([
+      "Pin",
+      "Mark unread",
+      "Notifications, All",
+      "All",
+      "None",
+      "Rename",
+      "Archive",
+      "---",
+      MORE,
+      "---",
+      "Delete",
+    ]);
+
+    fireEvent.click(trigger);
+    expect(screen.queryByRole("menuitem", { name: "None" })).toBeNull();
+  });
+
+  it("starts over on the quick actions after More… once the menu closes", async () => {
+    renderLongPress();
+    longPressRow();
+    fireEvent.click(await screen.findByRole("menuitem", { name: MORE }));
+    expect(await screen.findByRole("menuitem", { name: "Copy link" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("menuitem", { name: "Copy link" })).toBeNull(),
+    );
+
+    longPressRow();
+    expect(await screen.findByRole("menuitem", { name: MORE })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Copy link" })).toBeNull();
   });
 });
 
@@ -1196,25 +1379,40 @@ describe.each([
 
   it("lists only bulk items under the selection count, then inline items", async () => {
     renderSelection([readThread, unreadThread]);
-    fireEvent.contextMenu(screen.getByText("Selection"));
+    fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
     const menu = await openMenu();
     expect(within(menu).getByText("2 threads selected")).toBeTruthy();
-    expect(await menuRows()).toEqual([
-      "---",
-      "Pin",
-      "Mark read",
-      "Level for 2",
-      "---",
-      "Archive 2 threads",
-      "Delete 2 threads",
-      "---",
-      "Clear selection",
-    ]);
+    expect(await menuRows()).toEqual(
+      compact
+        ? [
+            "---",
+            "Pin",
+            "Mark read",
+            "Level for 2",
+            "---",
+            "Archive 2 threads",
+            "---",
+            "Clear selection",
+            "---",
+            "Delete 2 threads",
+          ]
+        : [
+            "---",
+            "Pin",
+            "Mark read",
+            "Level for 2",
+            "---",
+            "Archive 2 threads",
+            "Delete 2 threads",
+            "---",
+            "Clear selection",
+          ],
+    );
   });
 
   it("loads data for every selected thread while the menu is open", async () => {
     renderSelection([readThread, unreadThread]);
-    fireEvent.contextMenu(screen.getByText("Selection"));
+    fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
     await openMenu();
     await waitFor(() =>
       expect(seenThreadIds.at(-1)).toEqual(["thr_read", "thr_unread"]),
@@ -1224,7 +1422,7 @@ describe.each([
   it("runs each selection action against every selected thread", async () => {
     sdkThreads.pin.mockResolvedValue({ ...readThread, pinnedAt: 9 });
     renderSelection([readThread, unreadThread]);
-    const open = () => fireEvent.contextMenu(screen.getByText("Selection"));
+    const open = () => fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
 
     open();
     fireEvent.click(await screen.findByRole("menuitem", { name: "Mark read" }));
@@ -1290,7 +1488,7 @@ describe.each([
       },
       { ...baseThread, id: "thr_root" },
     ]);
-    fireEvent.contextMenu(screen.getByText("Selection"));
+    fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
     const trigger = await screen.findByRole("menuitem", {
       name: "Notify parent, Mixed",
     });
@@ -1312,7 +1510,7 @@ describe.each([
       { ...readThread, archivedAt: 3 },
       { ...unreadThread, archivedAt: 3 },
     ]);
-    fireEvent.contextMenu(screen.getByText("Selection"));
+    fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: "Unarchive 2 threads" }),
     );
@@ -1326,7 +1524,7 @@ describe.each([
 
   it("shows the thread's own menu for a selection of one", async () => {
     renderSelection([readThread]);
-    fireEvent.contextMenu(screen.getByText("Selection"));
+    fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
     await openMenu();
     expect(screen.queryByText(/selected$/)).toBeNull();
     expect(
@@ -1338,7 +1536,7 @@ describe.each([
     "reports Escape so the surface can clear its selection",
     async () => {
       renderSelection([readThread, unreadThread]);
-      fireEvent.contextMenu(screen.getByText("Selection"));
+      fireEvent.contextMenu(screen.getAllByText("Selection")[0]!);
       const menu = await openMenu();
       fireEvent.keyDown(menu, { key: "Escape" });
       expect(onEscapeKeyDown).toHaveBeenCalled();

@@ -10,8 +10,11 @@ import {
 } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { DropdownMenu, DropdownMenuContent } from "./dropdown-menu";
+import type { CompactMenuAnchor } from "./anchored-menu-shell";
+import type { CompactMenuPresentation } from "./responsive-overlay";
+import { triggerHaptic } from "../../lib/haptics";
 
-const LONG_PRESS_MS = 700;
+export const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_SLOP_PX = 10;
 
 const LONG_PRESS_TARGET_STYLE: CSSProperties = {
@@ -36,7 +39,15 @@ interface CompactLongPressMenuProps {
   dragging?: boolean;
   items: ReactNode;
   label: string;
+  presentation?: CompactMenuPresentation;
   onOpenChange?: (open: boolean) => void;
+}
+
+interface PendingPress {
+  pointerId: number;
+  element: HTMLElement;
+  x: number;
+  y: number;
 }
 
 export function CompactLongPressMenu({
@@ -45,14 +56,14 @@ export function CompactLongPressMenu({
   dragging = false,
   items,
   label,
+  presentation = "anchored",
   onOpenChange,
 }: CompactLongPressMenuProps) {
   const [open, setOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
+  const [anchor, setAnchor] = useState<CompactMenuAnchor | null>(null);
   const timerRef = useRef<number | null>(null);
-  const pressRef = useRef<{ pointerId: number; x: number; y: number } | null>(
-    null,
-  );
+  const pressRef = useRef<PendingPress | null>(null);
   const suppressClickRef = useRef(false);
 
   const clearPress = useCallback(() => {
@@ -87,11 +98,16 @@ export function CompactLongPressMenu({
     if (open) handleOpenChange(false);
   }, [clearPress, dragging, handleOpenChange, open]);
 
-  const openMenu = useCallback(() => {
-    clearPress();
-    setHasOpened(true);
-    handleOpenChange(true);
-  }, [clearPress, handleOpenChange]);
+  const openMenu = useCallback(
+    (nextAnchor: CompactMenuAnchor) => {
+      clearPress();
+      setAnchor(nextAnchor);
+      setHasOpened(true);
+      triggerHaptic("impact-medium");
+      handleOpenChange(true);
+    },
+    [clearPress, handleOpenChange],
+  );
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -112,17 +128,22 @@ export function CompactLongPressMenu({
       clearPress();
       pressRef.current = {
         pointerId: event.pointerId,
+        element: event.currentTarget,
         x: event.clientX,
         y: event.clientY,
       };
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
-        if (pressRef.current === null) {
+        const press = pressRef.current;
+        if (press === null) {
           return;
         }
         pressRef.current = null;
         suppressClickRef.current = true;
-        openMenu();
+        openMenu({
+          element: press.element,
+          pointer: { x: press.x, y: press.y },
+        });
       }, LONG_PRESS_MS);
     },
     [clearPress, disabled, dragging, openMenu],
@@ -166,7 +187,13 @@ export function CompactLongPressMenu({
       if (pressRef.current !== null) {
         suppressClickRef.current = true;
       }
-      openMenu();
+      openMenu({
+        element: event.currentTarget,
+        pointer:
+          event.clientX === 0 && event.clientY === 0
+            ? null
+            : { x: event.clientX, y: event.clientY },
+      });
     },
     [disabled, dragging, openMenu],
   );
@@ -219,6 +246,8 @@ export function CompactLongPressMenu({
           <DropdownMenuContent
             mobileTitle={label}
             aria-label={label}
+            compactPresentation={presentation}
+            compactAnchor={anchor}
             onPointerDownCapture={() => {
               suppressClickRef.current = false;
             }}

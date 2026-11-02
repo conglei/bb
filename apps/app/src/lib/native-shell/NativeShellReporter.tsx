@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { registerHapticHandler } from "@bb/shared-ui/haptics";
 import {
   getNativeShell,
   shellReportPath,
@@ -11,6 +12,12 @@ export function NativeShellReporter() {
   const location = useLocation();
   const path = `${location.pathname}${location.search}`;
   const hasReportedReady = useRef(false);
+
+  useEffect(() => {
+    if (shell === null || !shell.has("haptic")) return;
+    registerHapticHandler((kind) => shell.post({ type: "haptic", kind }));
+    return () => registerHapticHandler(null);
+  }, [shell]);
 
   useEffect(() => {
     if (shell === null || !shell.has("safe-area")) return;

@@ -14,10 +14,13 @@ import { usePointerCoarse } from "./hooks/use-pointer-coarse.js";
 import { usePortalScopeProps } from "../../lib/portal-scope.js";
 import { cn } from "../../lib/utils.js";
 
+export type CompactMenuPresentation = "sheet" | "anchored";
+
 export interface ResponsiveOverlayContextValue {
   isCompactViewport: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  compactPresentation?: CompactMenuPresentation;
 }
 
 const RESPONSIVE_DRAWER_REALIZE_FALLBACK_MS = 120;
