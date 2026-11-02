@@ -1470,10 +1470,13 @@ const SidebarInset = React.forwardRef<
         }
         recoverInterruptedMobileSwipe();
       } else {
+        if (!isSidebarSwipeEdgeZoneTouch(touch.clientX)) {
+          return;
+        }
         clearSwipeSession();
       }
 
-      const canPreventDefault = isSidebarSwipeEdgeZoneTouch(touch.clientX);
+      const canPreventDefault = true;
       swipeSessionRef.current = createSidebarInsetSwipeSession({
         kind: "touch",
         id: touch.identifier,
@@ -1528,6 +1531,9 @@ const SidebarInset = React.forwardRef<
         }
         recoverInterruptedMobileSwipe();
       } else {
+        if (!isSidebarSwipeEdgeZoneTouch(event.clientX)) {
+          return;
+        }
         clearSwipeSession();
       }
       swipeSessionRef.current = createSidebarInsetSwipeSession({

@@ -1172,25 +1172,16 @@ describe("mobile sidebar swipe-open touch listener scoping", () => {
     return spy.mock.calls.filter(([type]) => type === "touchmove");
   }
 
-  it("registers a passive touchmove for touches that start deep in the content", () => {
+  it("leaves a touch that starts deep in the content to the content", () => {
     renderSelectableSwipeHarness();
     const prose = screen.getByText("Selectable message prose");
     const addSpy = vi.spyOn(window, "addEventListener");
 
     fireTouch(prose, "touchstart", createTouch(120, 160));
 
-    const registrations = touchMoveRegistrations(addSpy);
-    expect(registrations).toHaveLength(1);
-    expect(registrations[0]?.[2]).toEqual({ passive: true });
-
-    const move = new Event("touchmove", { bubbles: true, cancelable: true });
-    Object.defineProperties(move, {
-      touches: { value: createTouchList(createTouch(260, 164)) },
-      changedTouches: { value: createTouchList(createTouch(260, 164)) },
-    });
-    fireEvent(window, move);
-    expect(getMobilePanel()?.dataset.state).toBe("open");
-    expect(move.defaultPrevented).toBe(false);
+    expect(touchMoveRegistrations(addSpy)).toHaveLength(0);
+    fireTouch(window, "touchmove", createTouch(260, 164));
+    expect(getMobilePanel()?.dataset.state ?? "closed").not.toBe("open");
   });
 
   it("keeps the non-passive touchmove for edge-zone touches so the swipe can claim the gesture", () => {
@@ -1420,11 +1411,11 @@ describe("mobile sidebar interrupted swipe sessions", () => {
       firePointer(send, "pointerdown", 320, 600);
       fireTouch(send, "touchstart", createTouch(320, 600));
       firePointer(send, "pointerup", 320, 600);
-      fireTouchEnd(send, createTouch(320, 600));
+      fireTouchEnd(send, createTouch(56, 600));
       expect(send.isConnected).toBe(false);
 
-      firePointer(prose, "pointerdown", 120, 160, identifier);
-      fireTouch(prose, "touchstart", createTouch(120, 160, identifier));
+      firePointer(prose, "pointerdown", 40, 160, identifier);
+      fireTouch(prose, "touchstart", createTouch(40, 160, identifier));
       fireTouch(window, "touchmove", createTouch(260, 164, identifier));
       expect(getMobilePanel()?.dataset.state).toBe("open");
       fireTouchEnd(window, createTouch(260, 164, identifier));
@@ -1437,13 +1428,13 @@ describe("mobile sidebar interrupted swipe sessions", () => {
       renderSelectableSwipeHarness();
       const prose = screen.getByText("Selectable message prose");
       if (kind === "pointer") {
-        firePointer(prose, "pointerdown", 320, 600);
-        firePointer(prose, "pointerdown", 120, 160, 2);
+        firePointer(prose, "pointerdown", 56, 600);
+        firePointer(prose, "pointerdown", 40, 160, 2);
         firePointer(window, "pointermove", 260, 164, 2);
         firePointer(window, "pointerup", 260, 164, 2);
       } else {
-        fireTouch(prose, "touchstart", createTouch(320, 600));
-        fireTouch(prose, "touchstart", createTouch(120, 160, 2));
+        fireTouch(prose, "touchstart", createTouch(56, 600));
+        fireTouch(prose, "touchstart", createTouch(40, 160, 2));
         fireTouch(window, "touchmove", createTouch(260, 164, 2));
         fireTouchEnd(window, createTouch(260, 164, 2));
       }
@@ -1454,8 +1445,8 @@ describe("mobile sidebar interrupted swipe sessions", () => {
   it("allows vertical scrolling after replacing an interrupted touch", () => {
     renderSelectableSwipeHarness();
     const prose = screen.getByText("Selectable message prose");
-    fireTouch(prose, "touchstart", createTouch(320, 600));
-    fireTouch(prose, "touchstart", createTouch(120, 160, 2));
+    fireTouch(prose, "touchstart", createTouch(56, 600));
+    fireTouch(prose, "touchstart", createTouch(40, 160, 2));
     const move = new Event("touchmove", { bubbles: true, cancelable: true });
     Object.defineProperties(move, {
       touches: { value: createTouchList(createTouch(124, 240, 2)) },
@@ -1464,7 +1455,7 @@ describe("mobile sidebar interrupted swipe sessions", () => {
     fireEvent(window, move);
     expect(move.defaultPrevented).toBe(false);
     expect(getMobilePanel()?.dataset.state).toBe("closed");
-    fireTouch(prose, "touchstart", createTouch(120, 160, 3));
+    fireTouch(prose, "touchstart", createTouch(40, 160, 3));
     fireTouch(window, "touchmove", createTouch(260, 164, 3));
     expect(getMobilePanel()?.dataset.state).toBe("open");
   });
@@ -1472,20 +1463,20 @@ describe("mobile sidebar interrupted swipe sessions", () => {
   it("keeps the primary pointer session when a second finger lands", () => {
     renderSelectableSwipeHarness();
     const prose = screen.getByText("Selectable message prose");
-    firePointer(prose, "pointerdown", 120, 160);
-    firePointer(prose, "pointerdown", 320, 600, 2, false);
+    firePointer(prose, "pointerdown", 40, 160);
+    firePointer(prose, "pointerdown", 56, 600, 2, false);
     firePointer(window, "pointermove", 260, 164);
     expect(getMobilePanel()?.dataset.state).toBe("open");
   });
 });
 
 describe("mobile sidebar text-selection arbitration", () => {
-  it("opens from a right swipe that starts over selectable message prose", () => {
+  it("opens from an edge swipe that starts over selectable message prose", () => {
     renderSelectableSwipeHarness();
     const prose = screen.getByText("Selectable message prose");
 
-    fireTouch(prose, "touchstart", createTouch(120, 160));
-    fireTouch(window, "touchmove", createTouch(260, 164));
+    fireTouch(prose, "touchstart", createTouch(40, 160));
+    fireTouch(window, "touchmove", createTouch(180, 164));
 
     expect(getMobilePanel()?.dataset.state).toBe("open");
     expect(getMobilePanel()?.textContent).toContain("Sidebar content");
@@ -1497,7 +1488,7 @@ describe("mobile sidebar text-selection arbitration", () => {
 
     setCompactSecondaryPanelSwipeOpening(true);
     try {
-      fireTouch(prose, "touchstart", createTouch(120, 160));
+      fireTouch(prose, "touchstart", createTouch(40, 160));
       fireTouch(window, "touchmove", createTouch(260, 164));
       expect(getMobilePanel()?.dataset.state).toBe("closed");
     } finally {
@@ -1508,7 +1499,7 @@ describe("mobile sidebar text-selection arbitration", () => {
   it("defers the horizontal-scroll-region probe until horizontal intent", () => {
     const { prose, getScrollWidthReads } = renderScrollerSwipeHarness();
 
-    fireTouch(prose, "touchstart", createTouch(120, 160));
+    fireTouch(prose, "touchstart", createTouch(40, 160));
 
     expect(getScrollWidthReads()).toBe(0);
 
@@ -1522,7 +1513,7 @@ describe("mobile sidebar text-selection arbitration", () => {
   it("defers the probe on the pointer path as well", () => {
     const { prose, getScrollWidthReads } = renderScrollerSwipeHarness();
 
-    firePointer(prose, "pointerdown", 120, 160);
+    firePointer(prose, "pointerdown", 40, 160);
 
     expect(getScrollWidthReads()).toBe(0);
 
@@ -1536,7 +1527,7 @@ describe("mobile sidebar text-selection arbitration", () => {
   it("cancels a swipe whose start target detached before the probe", () => {
     const { prose, getScrollWidthReads } = renderScrollerSwipeHarness();
 
-    fireTouch(prose, "touchstart", createTouch(120, 160));
+    fireTouch(prose, "touchstart", createTouch(40, 160));
     prose.remove();
     fireTouch(window, "touchmove", createTouch(260, 164));
 
@@ -1560,7 +1551,7 @@ describe("mobile sidebar text-selection arbitration", () => {
     const prose = screen.getByText("Selectable message prose");
     selectionNode = prose.firstChild;
 
-    fireTouch(prose, "touchstart", createTouch(120, 160));
+    fireTouch(prose, "touchstart", createTouch(40, 160));
     hasSelection = true;
     fireEvent(document, new Event("selectionchange"));
     fireTouch(window, "touchmove", createTouch(260, 164));
