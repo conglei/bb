@@ -201,6 +201,7 @@ Read the installed SDK declarations for the exact current signatures.
 - `PluginSidebarThreadActivity`
 - `PluginSidebarThread`
 - `PluginSidebarProject`
+- `ExperimentalSidebarProjectOwnerPlugin`
 - `PluginSidebarSection`
 - `PluginSidebarThreadsState`
 - `PluginProvidersState`
