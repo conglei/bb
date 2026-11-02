@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -30,7 +31,9 @@ import {
 import { ActionMenuSeparator } from "@bb/shared-ui/action-menu-items";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { CompactLongPressMenu } from "@bb/shared-ui/compact-long-press-menu";
+import { CORE_THREAD_ACTION_OWNER } from "@/lib/thread-actions/thread-action-registry";
 import {
+  LongPressThreadActionMenuRows,
   ThreadActionMenuRows,
   useThreadActionMenuGroups,
   useThreadBulkActionMenuGroups,
@@ -38,6 +41,19 @@ import {
 } from "./ThreadActionMenuItems";
 
 const MENU_LABEL = "Thread actions";
+
+export const LONG_PRESS_QUICK_ACTION_KEYS: ReadonlySet<string> = new Set([
+  `${CORE_THREAD_ACTION_OWNER}/pin`,
+  `${CORE_THREAD_ACTION_OWNER}/read`,
+  "push-notifications/notifications",
+  `${CORE_THREAD_ACTION_OWNER}/rename`,
+  `${CORE_THREAD_ACTION_OWNER}/archive`,
+]);
+
+interface LongPressMenuState {
+  showAll: boolean;
+  onShowAll: () => void;
+}
 
 function ThreadActionsMenuItems({
   thread,
@@ -47,6 +63,7 @@ function ThreadActionsMenuItems({
   isDrawer,
   drawerStep,
   onDrawerStepChange,
+  longPress,
 }: {
   thread: PluginThreadActionTarget;
   inline?: readonly PluginThreadActionsInlineItem[];
@@ -55,8 +72,21 @@ function ThreadActionsMenuItems({
   isDrawer: boolean;
   drawerStep: string | null;
   onDrawerStepChange: (key: string | null) => void;
+  longPress?: LongPressMenuState;
 }) {
   const groups = useThreadActionMenuGroups({ thread, inline, requestRename });
+  if (longPress !== undefined) {
+    return (
+      <LongPressThreadActionMenuRows
+        groups={groups}
+        quickKeys={LONG_PRESS_QUICK_ACTION_KEYS}
+        showAll={longPress.showAll}
+        onShowAll={longPress.onShowAll}
+        drawerStep={drawerStep}
+        onDrawerStepChange={onDrawerStepChange}
+      />
+    );
+  }
   return (
     <ThreadActionMenuRows
       groups={groups}
@@ -178,6 +208,7 @@ interface MenuItemsRenderProps {
   isDrawer: boolean;
   drawerStep: string | null;
   onDrawerStepChange: (key: string | null) => void;
+  longPress?: LongPressMenuState;
 }
 
 export function ThreadActionsContextMenu({
@@ -235,6 +266,7 @@ function ThreadBulkMenuItems({
   isDrawer,
   drawerStep,
   onDrawerStepChange,
+  longPress,
 }: {
   threads: readonly PluginThreadActionTarget[];
   inline?: readonly PluginThreadActionsInlineItem[];
@@ -243,7 +275,7 @@ function ThreadBulkMenuItems({
   const Label = surface === "context" ? ContextMenuLabel : DropdownMenuLabel;
   return (
     <>
-      {drawerStep === null ? (
+      {drawerStep === null || longPress !== undefined ? (
         <>
           <Label className="text-muted-foreground">
             {describeThreadCount(threads.length)} selected
@@ -251,13 +283,24 @@ function ThreadBulkMenuItems({
           {groups.length > 0 ? <ActionMenuSeparator surface={surface} /> : null}
         </>
       ) : null}
-      <ThreadActionMenuRows
-        groups={groups}
-        surface={surface}
-        isDrawer={isDrawer}
-        drawerStep={drawerStep}
-        onDrawerStepChange={onDrawerStepChange}
-      />
+      {longPress === undefined ? (
+        <ThreadActionMenuRows
+          groups={groups}
+          surface={surface}
+          isDrawer={isDrawer}
+          drawerStep={drawerStep}
+          onDrawerStepChange={onDrawerStepChange}
+        />
+      ) : (
+        <LongPressThreadActionMenuRows
+          groups={groups}
+          quickKeys={LONG_PRESS_QUICK_ACTION_KEYS}
+          showAll
+          onShowAll={longPress.onShowAll}
+          drawerStep={drawerStep}
+          onDrawerStepChange={onDrawerStepChange}
+        />
+      )}
     </>
   );
 }
@@ -279,19 +322,32 @@ function LongPressMenuShell({
   disabled,
   dragging,
 }: ContextMenuShellProps) {
-  const { drawerStep, setDrawerStep, handleOpenChange } =
-    useDrawerStep(onOpenChange);
+  const [showAll, setShowAll] = useState(false);
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) setShowAll(false);
+      onOpenChange?.(open);
+    },
+    [onOpenChange],
+  );
+  const { drawerStep, setDrawerStep, handleOpenChange: handleStepOpenChange } =
+    useDrawerStep(handleOpenChange);
+  const longPress = useMemo<LongPressMenuState>(
+    () => ({ showAll, onShowAll: () => setShowAll(true) }),
+    [showAll],
+  );
   return (
     <CompactLongPressMenu
       label={label}
       disabled={disabled}
       dragging={dragging}
-      onOpenChange={handleOpenChange}
+      onOpenChange={handleStepOpenChange}
       items={renderItems({
         surface: "dropdown",
         isDrawer: true,
         drawerStep,
         onDrawerStepChange: setDrawerStep,
+        longPress,
       })}
     >
       {children}

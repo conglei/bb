@@ -10,17 +10,21 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompactViewportOverrideProvider } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { DropdownMenuItem } from "@bb/shared-ui/dropdown-menu";
-import { CompactLongPressMenu } from "@bb/shared-ui/compact-long-press-menu";
-
-const LONG_PRESS_MS = 700;
+import {
+  CompactLongPressMenu,
+  LONG_PRESS_MS,
+} from "@bb/shared-ui/compact-long-press-menu";
+import { registerHapticHandler } from "@bb/shared-ui/haptics";
 
 function renderRow({
   disabled = false,
+  presentation,
   onRowClick = vi.fn(),
   onOpenChange = vi.fn(),
   onRename = vi.fn(),
 }: {
   disabled?: boolean;
+  presentation?: "anchored" | "sheet";
   onRowClick?: () => void;
   onOpenChange?: (open: boolean) => void;
   onRename?: () => void;
@@ -33,6 +37,7 @@ function renderRow({
       <CompactLongPressMenu
         disabled={disabled}
         label="Thread actions"
+        presentation={presentation}
         onOpenChange={onOpenChange}
         items={<DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>}
       >
@@ -62,9 +67,26 @@ function touchPointerDown(target: Element, x = 100, y = 100) {
   });
 }
 
+function longPress(target: Element) {
+  touchPointerDown(target);
+  act(() => {
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+  });
+}
+
+function settle() {
+  act(() => {
+    vi.advanceTimersByTime(500);
+  });
+}
+
+const openBackdrop = () =>
+  document.querySelector("[data-anchored-menu-backdrop][data-state='open']");
+
 afterEach(() => {
   cleanup();
   document.getElementById("root")?.remove();
+  registerHapticHandler(null);
   vi.useRealTimers();
 });
 
@@ -73,10 +95,7 @@ describe("CompactLongPressMenu", () => {
     vi.useFakeTimers();
     const { row, onOpenChange } = renderRow({ disabled: true });
 
-    touchPointerDown(row);
-    act(() => {
-      vi.advanceTimersByTime(LONG_PRESS_MS);
-    });
+    longPress(row);
     const event = new MouseEvent("contextmenu", {
       bubbles: true,
       cancelable: true,
@@ -87,12 +106,12 @@ describe("CompactLongPressMenu", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it("mounts nothing for the menu until a long press, then opens the drawer without a modal takeover", () => {
+  it("mounts nothing for the menu until a long press, then opens a menu anchored to the row without a modal takeover", () => {
     vi.useFakeTimers();
     const { row, onOpenChange } = renderRow();
 
     expect(screen.queryByRole("menuitem")).toBeNull();
-    expect(document.querySelector("[role='dialog']")).toBeNull();
+    expect(document.querySelector("[role='menu']")).toBeNull();
 
     touchPointerDown(row);
     act(() => {
@@ -104,10 +123,11 @@ describe("CompactLongPressMenu", () => {
     });
     expect(onOpenChange).toHaveBeenCalledWith(true);
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    settle();
+    const menu = screen.getByRole("menu", { name: "Thread actions" });
+    expect(menu.getAttribute("data-anchored-menu-content")).not.toBeNull();
     expect(screen.getByRole("menuitem", { name: "Rename" })).toBeTruthy();
+    expect(document.querySelector("[role='dialog']")).toBeNull();
 
     const root = document.getElementById("root");
     expect(root?.getAttribute("aria-hidden")).toBeNull();
@@ -115,14 +135,61 @@ describe("CompactLongPressMenu", () => {
     expect(document.body.style.pointerEvents).toBe("");
   });
 
+  it("lifts a copy of the pressed row above the backdrop and drops it once the menu closes", () => {
+    vi.useFakeTimers();
+    const { row, onOpenChange } = renderRow();
+
+    longPress(row);
+    settle();
+    const preview = document.querySelector("[data-anchored-menu-preview]");
+    expect(preview?.getAttribute("aria-hidden")).toBe("true");
+    const copy = preview?.firstElementChild;
+    expect(copy?.textContent).toBe("Thread row");
+    expect(copy?.hasAttribute("inert")).toBe(true);
+    expect(copy).not.toBe(row);
+    expect(row.isConnected).toBe(true);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+    settle();
+    expect(document.querySelector("[data-anchored-menu-preview]")).toBeNull();
+    expect(openBackdrop()).toBeNull();
+  });
+
+  it("asks the shell for a haptic when the press opens the menu", () => {
+    vi.useFakeTimers();
+    const haptic = vi.fn();
+    registerHapticHandler(haptic);
+    const { row } = renderRow();
+
+    touchPointerDown(row);
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS - 1);
+    });
+    expect(haptic).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(haptic).toHaveBeenCalledWith("impact-medium");
+    expect(haptic).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the bottom sheet for callers that ask for it", () => {
+    vi.useFakeTimers();
+    const { row } = renderRow({ presentation: "sheet" });
+
+    longPress(row);
+    settle();
+    expect(document.querySelector("[role='dialog']")).not.toBeNull();
+    expect(document.querySelector("[data-anchored-menu-content]")).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Rename" })).toBeTruthy();
+  });
+
   it("swallows the click that follows a long press so the row does not navigate", () => {
     vi.useFakeTimers();
     const { row, onRowClick } = renderRow();
 
-    touchPointerDown(row);
-    act(() => {
-      vi.advanceTimersByTime(LONG_PRESS_MS);
-    });
+    longPress(row);
     fireEvent.pointerUp(row, { pointerId: 1, pointerType: "touch" });
     fireEvent.click(row);
     expect(onRowClick).not.toHaveBeenCalled();
@@ -134,9 +201,8 @@ describe("CompactLongPressMenu", () => {
   it("ignores the opening release on a menu item but allows a new tap", () => {
     vi.useFakeTimers();
     const { row, onRename } = renderRow();
-    touchPointerDown(row);
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
-    act(() => vi.advanceTimersByTime(500));
+    longPress(row);
+    settle();
     const item = screen.getByRole("menuitem", { name: "Rename" });
     act(() => vi.advanceTimersByTime(2000));
     fireEvent.click(item);
@@ -146,14 +212,12 @@ describe("CompactLongPressMenu", () => {
     expect(onRename).toHaveBeenCalledOnce();
   });
 
-  it("ignores the opening release on the drawer backdrop but allows a fresh tap to dismiss", () => {
+  it("ignores the opening release on the backdrop but allows a fresh tap to dismiss", () => {
     vi.useFakeTimers();
     const { row, onOpenChange } = renderRow();
-    touchPointerDown(row);
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS + 500));
-    const backdrop = document.querySelector(
-      "[data-persistent-drawer-backdrop][data-state='open']",
-    );
+    longPress(row);
+    settle();
+    const backdrop = openBackdrop();
     expect(backdrop).not.toBeNull();
     fireEvent.click(backdrop!);
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
@@ -229,10 +293,7 @@ describe("CompactLongPressMenu", () => {
     );
     const row = screen.getByTestId("row");
 
-    touchPointerDown(row);
-    act(() => {
-      vi.advanceTimersByTime(LONG_PRESS_MS);
-    });
+    longPress(row);
     expect(onThreadOpenChange).toHaveBeenCalledWith(true);
     expect(onProjectOpenChange).not.toHaveBeenCalled();
 
@@ -241,10 +302,7 @@ describe("CompactLongPressMenu", () => {
     expect(onThreadOpenChange).toHaveBeenCalledWith(true);
     expect(onProjectOpenChange).not.toHaveBeenCalled();
 
-    touchPointerDown(screen.getByText("Project"));
-    act(() => {
-      vi.advanceTimersByTime(LONG_PRESS_MS);
-    });
+    longPress(screen.getAllByText("Project")[0]!);
     expect(onProjectOpenChange).toHaveBeenCalledWith(true);
   });
 
@@ -283,10 +341,7 @@ describe("CompactLongPressMenu", () => {
       </CompactViewportOverrideProvider>,
     );
 
-    touchPointerDown(screen.getByTestId("row"));
-    act(() => {
-      vi.advanceTimersByTime(LONG_PRESS_MS);
-    });
+    longPress(screen.getByTestId("row"));
     expect(onThreadOpenChange).toHaveBeenCalledWith(true);
     expect(onProjectOpenChange).not.toHaveBeenCalled();
   });

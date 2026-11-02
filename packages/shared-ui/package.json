@@ -289,6 +289,16 @@
       "types": "./src/components/ui/compact-long-press-menu.tsx",
       "default": "./src/components/ui/compact-long-press-menu.tsx"
     },
+    "./anchored-menu-placement": {
+      "source": "./src/components/ui/anchored-menu-placement.ts",
+      "types": "./src/components/ui/anchored-menu-placement.ts",
+      "default": "./src/components/ui/anchored-menu-placement.ts"
+    },
+    "./haptics": {
+      "source": "./src/lib/haptics.ts",
+      "types": "./src/lib/haptics.ts",
+      "default": "./src/lib/haptics.ts"
+    },
     "./confirm-delete-dialog": {
       "source": "./src/components/ui/confirm-delete-dialog.tsx",
       "types": "./src/components/ui/confirm-delete-dialog.tsx",

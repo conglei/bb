@@ -19,6 +19,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@bb/shared-ui/dropdown-menu";
 import { Icon } from "@bb/shared-ui/icon";
+import { cn } from "@bb/shared-ui/lib/utils";
 import {
   ActionMenuItem,
   ActionMenuSeparator,
@@ -100,9 +101,11 @@ export function useThreadBulkActionMenuGroups({
 function ThreadActionChoiceRows({
   entry,
   surface,
+  leadingCheck = false,
 }: {
   entry: ThreadActionMenuEntry;
   surface: ThreadActionMenuSurface;
+  leadingCheck?: boolean;
 }) {
   const choices = entry.action.choices;
   if (choices === undefined) return null;
@@ -117,11 +120,19 @@ function ThreadActionChoiceRows({
         void entry.action.run(choice.id);
       }}
     >
+      {leadingCheck ? (
+        <span
+          className="flex w-4 shrink-0 items-center justify-center"
+          aria-hidden="true"
+        >
+          {choice.selected ? <Icon name="Check" /> : null}
+        </span>
+      ) : null}
       {choice.icon !== undefined ? (
         <Icon name={choice.icon} aria-hidden="true" />
       ) : null}
       <span className="min-w-0 flex-1 truncate">{choice.label}</span>
-      {choice.selected ? (
+      {choice.selected && !leadingCheck ? (
         <Icon name="Check" className="ml-auto" aria-hidden="true" />
       ) : null}
     </Item>
@@ -178,12 +189,16 @@ function ThreadActionMenuRow({
   entry,
   surface,
   isDrawer,
+  inlineSubmenus = false,
+  expanded = false,
   onOpenDrawerStep,
 }: {
   entry: ThreadActionMenuEntry;
   surface: ThreadActionMenuSurface;
   isDrawer: boolean;
-  onOpenDrawerStep: (key: string) => void;
+  inlineSubmenus?: boolean;
+  expanded?: boolean;
+  onOpenDrawerStep: (key: string | null) => void;
 }) {
   const { action } = entry;
   if (action.choices === undefined) {
@@ -199,6 +214,42 @@ function ThreadActionMenuRow({
       >
         <ThreadActionLabel action={action} />
       </ActionMenuItem>
+    );
+  }
+  if (isDrawer && inlineSubmenus) {
+    const hint = action.choices.hint;
+    return (
+      <>
+        <DropdownMenuItem
+          aria-expanded={expanded}
+          disabled={action.disabled}
+          onSelect={(event) => {
+            event.preventDefault();
+            onOpenDrawerStep(expanded ? null : entry.key);
+          }}
+        >
+          <Icon name={action.icon} aria-hidden="true" />
+          <ThreadActionSubmenuLabel action={action} />
+          <Icon
+            name="ChevronDown"
+            className={cn(
+              "order-last shrink-0 transition-transform",
+              expanded && "rotate-180",
+            )}
+            aria-hidden="true"
+          />
+        </DropdownMenuItem>
+        {expanded ? (
+          <div role="group" className="bg-muted/40">
+            <ThreadActionChoiceRows entry={entry} surface="dropdown" leadingCheck />
+            {hint === undefined ? null : (
+              <div className="px-4 pb-2.5 pt-1 text-xs text-muted-foreground">
+                {hint}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </>
     );
   }
   if (isDrawer) {
@@ -257,7 +308,7 @@ function ThreadActionDrawerStep({
       <DropdownMenuLabel>
         {entry.action.choices?.heading ?? entry.action.label}
       </DropdownMenuLabel>
-      <ThreadActionChoiceRows entry={entry} surface="dropdown" />
+      <ThreadActionChoiceRows entry={entry} surface="dropdown" leadingCheck />
       <ThreadActionChoicesHint entry={entry} surface="dropdown" />
     </>
   );
@@ -267,17 +318,19 @@ export function ThreadActionMenuRows({
   groups,
   surface,
   isDrawer,
+  inlineSubmenus = false,
   drawerStep,
   onDrawerStepChange,
 }: {
   groups: readonly ThreadActionMenuEntry[][];
   surface: ThreadActionMenuSurface;
   isDrawer: boolean;
+  inlineSubmenus?: boolean;
   drawerStep: string | null;
   onDrawerStepChange: (key: string | null) => void;
 }) {
   const stepEntry =
-    isDrawer && drawerStep !== null
+    isDrawer && !inlineSubmenus && drawerStep !== null
       ? groups.flat().find((entry) => entry.key === drawerStep)
       : undefined;
   if (stepEntry !== undefined && stepEntry.action.choices !== undefined) {
@@ -297,9 +350,102 @@ export function ThreadActionMenuRows({
           entry={entry}
           surface={surface}
           isDrawer={isDrawer}
+          inlineSubmenus={inlineSubmenus}
+          expanded={inlineSubmenus && drawerStep === entry.key}
           onOpenDrawerStep={onDrawerStepChange}
         />
       ))}
     </Fragment>
   ));
+}
+
+export interface LongPressMenuArrangement {
+  primary: ThreadActionMenuEntry[][];
+  destructive: ThreadActionMenuEntry[];
+  hidden: number;
+}
+
+function isDestructive(entry: ThreadActionMenuEntry): boolean {
+  return entry.action.variant === "destructive";
+}
+
+export function arrangeLongPressMenuGroups(
+  groups: readonly ThreadActionMenuEntry[][],
+  { quickKeys, showAll }: { quickKeys: ReadonlySet<string>; showAll: boolean },
+): LongPressMenuArrangement {
+  const entries = groups.flat();
+  const destructive = entries.filter(isDestructive);
+  if (showAll) {
+    return {
+      primary: groups
+        .map((group) => group.filter((entry) => !isDestructive(entry)))
+        .filter((group) => group.length > 0),
+      destructive,
+      hidden: 0,
+    };
+  }
+  const quick = entries.filter(
+    (entry) => quickKeys.has(entry.key) && !isDestructive(entry),
+  );
+  return {
+    primary: quick.length > 0 ? [quick] : [],
+    destructive,
+    hidden: entries.length - quick.length - destructive.length,
+  };
+}
+
+export function LongPressThreadActionMenuRows({
+  groups,
+  quickKeys,
+  showAll,
+  onShowAll,
+  drawerStep,
+  onDrawerStepChange,
+}: {
+  groups: readonly ThreadActionMenuEntry[][];
+  quickKeys: ReadonlySet<string>;
+  showAll: boolean;
+  onShowAll: () => void;
+  drawerStep: string | null;
+  onDrawerStepChange: (key: string | null) => void;
+}) {
+  const { primary, destructive, hidden } = arrangeLongPressMenuGroups(groups, {
+    quickKeys,
+    showAll,
+  });
+  const rows = (rowGroups: readonly ThreadActionMenuEntry[][]) => (
+    <ThreadActionMenuRows
+      groups={rowGroups}
+      surface="dropdown"
+      isDrawer
+      inlineSubmenus
+      drawerStep={drawerStep}
+      onDrawerStepChange={onDrawerStepChange}
+    />
+  );
+  return (
+    <>
+      {rows(primary)}
+      {hidden > 0 ? (
+        <>
+          {primary.length > 0 ? <DropdownMenuSeparator /> : null}
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              onShowAll();
+            }}
+          >
+            <Icon name="MoreHorizontal" aria-hidden="true" />
+            More…
+          </DropdownMenuItem>
+        </>
+      ) : null}
+      {destructive.length > 0 ? (
+        <>
+          {primary.length > 0 || hidden > 0 ? <DropdownMenuSeparator /> : null}
+          {rows([destructive])}
+        </>
+      ) : null}
+    </>
+  );
 }
