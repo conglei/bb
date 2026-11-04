@@ -383,6 +383,7 @@ function AppHeader({
   meta,
 }: AppHeaderProps) {
   const pageTitle = usePageTitleValue();
+  const isCompactViewport = useIsCompactViewport();
   const headerBreadcrumbs = pluginPanelChrome
     ? undefined
     : (pageTitle?.breadcrumbs ?? meta.breadcrumbs);
@@ -394,7 +395,13 @@ function AppHeader({
   const hasCenterContent = Boolean(headerBreadcrumbs) || Boolean(headerTitle);
 
   const center =
-    isProjectViewRoute && project ? (
+    isProjectViewRoute && project && isCompactViewport ? (
+      project.ownerKind === "plugin" ? null : (
+        <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+          {project.name}
+        </p>
+      )
+    ) : isProjectViewRoute && project ? (
       <PageTitleHeader
         icon={
           project.kind === "standard" ? (
@@ -452,17 +459,19 @@ function AppHeader({
     projectId &&
     !isProjectlessProjectId(projectId) ? (
     <>
-      <Link
-        to={getSettingsProjectRoutePath(projectId)}
-        className={cn(
-          HEADER_ICON_BUTTON_CLASS,
-          "inline-flex items-center justify-center transition-colors",
-          "text-muted-foreground hover:bg-state-hover hover:text-foreground",
-        )}
-        aria-label="Project settings"
-      >
-        <Icon name="Settings" />
-      </Link>
+      {isCompactViewport && project ? null : (
+        <Link
+          to={getSettingsProjectRoutePath(projectId)}
+          className={cn(
+            HEADER_ICON_BUTTON_CLASS,
+            "inline-flex items-center justify-center transition-colors",
+            "text-muted-foreground hover:bg-state-hover hover:text-foreground",
+          )}
+          aria-label="Project settings"
+        >
+          <Icon name="Settings" />
+        </Link>
+      )}
       {project ? (
         <ProjectActionsMenu
           project={project}
