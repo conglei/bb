@@ -196,6 +196,8 @@ export function ProjectWorkspaceView({
           (candidate) => projectViewKeyOf(candidate) === activeViewKey,
         ) ?? null);
 
+  const showBottomBar = isCompactViewport && subPath === "";
+
   return (
     <div
       className={cn(
@@ -217,7 +219,13 @@ export function ProjectWorkspaceView({
         shellClassName={
           isCompactViewport ? "mx-0 mt-0 mb-0" : "mx-0 mt-0 md:mx-0 md:mt-0"
         }
-        contentClassName={isCompactViewport ? "pt-1 pb-8" : "pt-4 md:pt-5"}
+        contentClassName={
+          showBottomBar
+            ? "pt-1 pb-8"
+            : isCompactViewport
+              ? "pt-1 pb-[calc(2rem+var(--bb-content-bottom-inset,0px))]"
+              : "pt-4 md:pt-5"
+        }
       >
         {isCompactViewport &&
         view !== null &&
@@ -257,7 +265,7 @@ export function ProjectWorkspaceView({
           </div>
         )}
       </PageShell>
-      {isCompactViewport ? (
+      {showBottomBar ? (
         <ProjectViewBottomBar
           projectId={projectId}
           views={projectViews}

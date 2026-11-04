@@ -392,13 +392,14 @@ describe("ProjectWorkspaceView", () => {
       expect(screen.getByRole("tab", { name: "Today" }).getAttribute("aria-selected")).toBe("true");
     });
 
-    it("leaves the page title to a view's own sub-page", () => {
+    it("gives a view's own sub-page the whole screen", () => {
       renderCompact("/projects/proj_kept/views/kept.today/brief/brf_1");
 
       expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
       expect(
-        screen.getByRole("navigation", { name: "Project views" }),
-      ).toBeDefined();
+        screen.queryByRole("navigation", { name: "Project views" }),
+      ).toBeNull();
+      expect(screen.getByText("today body")).toBeDefined();
     });
   });
 });
