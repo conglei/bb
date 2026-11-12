@@ -289,6 +289,12 @@ const CODEX_APP_SERVER_COMMAND_ENV = "BB_CODEX_BRIDGE_APP_SERVER_COMMAND";
 const CODEX_APP_SERVER_ARGS_ENV = "BB_CODEX_BRIDGE_APP_SERVER_ARGS";
 const CODEX_POOL_BASE_URL_ENV = "CODEX_OPENAI_BASE_URL";
 const CODEX_POOL_AUTH_TOKEN_ENV = "CODEX_POOL_AUTH_TOKEN";
+const CODEX_HOME_ENV = "CODEX_HOME";
+const APP_SERVER_LAUNCH_ENV_NAMES = [
+  CODEX_POOL_BASE_URL_ENV,
+  CODEX_POOL_AUTH_TOKEN_ENV,
+  CODEX_HOME_ENV,
+] as const;
 
 const CODEX_INITIALIZE_PARAMS = {
   clientInfo: { name: "bb", version: "1.0.0", title: null },
@@ -394,17 +400,12 @@ export function resolveAppServerLaunch(env: NodeJS.ProcessEnv = process.env): {
 function appServerLaunchEnv(
   envVars: Readonly<Record<string, string>> | undefined,
 ): NodeJS.ProcessEnv {
-  const poolBaseUrl = envVars?.[CODEX_POOL_BASE_URL_ENV];
-  const poolAuthToken = envVars?.[CODEX_POOL_AUTH_TOKEN_ENV];
-  return {
-    ...process.env,
-    ...(poolBaseUrl === undefined
-      ? {}
-      : { [CODEX_POOL_BASE_URL_ENV]: poolBaseUrl }),
-    ...(poolAuthToken === undefined
-      ? {}
-      : { [CODEX_POOL_AUTH_TOKEN_ENV]: poolAuthToken }),
-  };
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const name of APP_SERVER_LAUNCH_ENV_NAMES) {
+    const value = envVars?.[name];
+    if (value !== undefined) env[name] = value;
+  }
+  return env;
 }
 
 function buildAppServerEnv(
@@ -475,6 +476,7 @@ interface CodexBridgeSession {
   translator: CodexEventTranslator;
   construction: CodexSessionConstruction;
   constructionSignature: string;
+  environmentHash: string;
   turnPermissionSettings: ReturnType<typeof toCodexPermissionSettings>;
   openCodexTurnIds: Set<string>;
   responseOpenedTurns: Map<string, ResponseOpenedTurn>;
@@ -581,24 +583,26 @@ function requestedDaybreak(options: BridgeExecutionOptions): boolean | null {
   return typeof requested === "boolean" ? requested : null;
 }
 
+function environmentHash(
+  envVars: Readonly<Record<string, string>> | undefined,
+): string {
+  const entries = Object.entries(envVars ?? {}).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  return createHash("sha256").update(JSON.stringify(entries)).digest("hex");
+}
+
 function constructionSignature(
   cwd: string,
   sessionOptions: CodexSessionOptions,
+  envHash: string,
 ): string {
-  const poolBaseUrl = sessionOptions.envVars?.[CODEX_POOL_BASE_URL_ENV];
-  const poolToken = sessionOptions.envVars?.[CODEX_POOL_AUTH_TOKEN_ENV];
   return JSON.stringify({
     cwd,
     reasoningLevel: sessionOptions.reasoningLevel ?? null,
     memoryEnabled: sessionOptions.memoryEnabled ?? null,
     providerSubagentsEnabled: sessionOptions.providerSubagentsEnabled ?? null,
-    poolRoute:
-      poolBaseUrl === undefined || poolToken === undefined
-        ? null
-        : {
-            baseUrl: poolBaseUrl,
-            tokenHash: createHash("sha256").update(poolToken).digest("hex"),
-          },
+    envHash,
   });
 }
 
@@ -1231,6 +1235,7 @@ async function constructThreadSession(
     })),
   );
   const launchEnv = appServerLaunchEnv(decoded.sessionOptions.envVars);
+  const envHash = environmentHash(decoded.sessionOptions.envVars);
   const session: CodexBridgeSession = {
     bbThreadId: args.threadId,
     codexThreadId:
@@ -1246,7 +1251,9 @@ async function constructThreadSession(
     constructionSignature: constructionSignature(
       args.cwd,
       decoded.sessionOptions,
+      envHash,
     ),
+    environmentHash: envHash,
     turnPermissionSettings: toCodexPermissionSettings({
       additionalWorkspaceWriteRoots: decoded.additionalWorkspaceWriteRoots,
       gitWritableRoots: [],
@@ -1474,6 +1481,7 @@ function registerResumableSession(session: CodexBridgeSession): void {
     translator: session.translator,
     construction: session.construction,
     constructionSignature: session.constructionSignature,
+    environmentHash: session.environmentHash,
     turnPermissionSettings: session.turnPermissionSettings,
     openCodexTurnIds: new Set(),
     responseOpenedTurns: new Map(),
@@ -1682,9 +1690,13 @@ async function requireLiveSessionForTurn(
   }
 
   const decoded = decodeCodexOptions(params.options);
+  const turnEnvVars = decoded.sessionOptions.envVars ?? {};
   const signature = constructionSignature(
     session.construction.cwd,
     decoded.sessionOptions,
+    Object.keys(turnEnvVars).length === 0
+      ? session.environmentHash
+      : environmentHash(turnEnvVars),
   );
   if (session.connection === null || session.connection.exited) {
     session = await rebuildThreadSession(
@@ -2055,7 +2067,6 @@ async function handleTurnStart(
         method: "thread/compact/start",
         params: { threadId: codexThreadId },
         resultSchema: ignoredChildResultSchema,
-        timeoutMs: CHILD_REQUEST_TIMEOUT_MS,
       });
     } else {
       const permissionSettings = toCodexPermissionSettings({
@@ -2087,7 +2098,6 @@ async function handleTurnStart(
             ...(cyberAccessProgram === null ? {} : { cyberAccessProgram }),
           },
           resultSchema: ignoredChildResultSchema,
-          timeoutMs: CHILD_REQUEST_TIMEOUT_MS,
         })
         .catch((error: unknown) => {
           if (session.turnPermissionSettings === permissionSettings) {
@@ -2117,6 +2127,9 @@ async function handleTurnStart(
     );
   }
 }
+
+const CODEX_STALE_STEER_MESSAGE_PATTERN =
+  /^(?:no active turn to steer|expected active turn id `[^`]+` but found `[^`]+`)$/;
 
 async function handleTurnSteer(
   id: string | number,
@@ -2150,7 +2163,8 @@ async function handleTurnSteer(
       !isDeepStrictEqual(session.turnPermissionSettings, permissionSettings)
     ) {
       if (!session.openCodexTurnIds.has(params.expectedTurnId)) {
-        throw new Error("The turn to steer is no longer active");
+        rejectStaleSteer(id, "The turn to steer is no longer active");
+        return;
       }
       const failure = await interruptCodexTurn(
         session,
@@ -2179,7 +2193,6 @@ async function handleTurnSteer(
         input: await resolveCodexSkillInput(session, params.input),
       },
       resultSchema: ignoredChildResultSchema,
-      timeoutMs: CHILD_REQUEST_TIMEOUT_MS,
     });
     sendThreadDeltas(session, [
       {
@@ -2190,8 +2203,22 @@ async function handleTurnSteer(
     ]);
     sendResult(id, { threadId: params.threadId });
   } catch (error) {
+    if (
+      error instanceof CodexAppServerRpcError &&
+      error.code === -32600 &&
+      CODEX_STALE_STEER_MESSAGE_PATTERN.test(error.message)
+    ) {
+      rejectStaleSteer(id, error.message);
+      return;
+    }
     rejectWithCodexError(id, error);
   }
+}
+
+function rejectStaleSteer(id: string | number, message: string): void {
+  sendError(id, BRIDGE_JSON_RPC_ERRORS.NO_ACTIVE_TURN, message, {
+    recovery: { kind: "staleTurn", message, retryable: false },
+  });
 }
 
 async function handleThreadStop(
@@ -2228,7 +2255,13 @@ async function handleThreadStop(
     session.codexThreadId,
     params.activeTurnId,
   );
-  if (interruptFailure !== null) {
+  const nativeStartTimedOut =
+    interruptFailure instanceof CodexAppServerRpcError &&
+    interruptFailure.code === -32600 &&
+    interruptFailure.message === "no active turn to interrupt" &&
+    session.responseOpenedTurns.get(params.activeTurnId)?.nativeStarted ===
+      false;
+  if (interruptFailure !== null && !nativeStartTimedOut) {
     sendError(
       id,
       BRIDGE_JSON_RPC_ERRORS.BRIDGE_ERROR,
@@ -2236,11 +2269,13 @@ async function handleThreadStop(
     );
     return;
   }
-  const settled = await waitForCodexTurnSettlement(
-    session,
-    params.activeTurnId,
-    INTERRUPT_SETTLEMENT_TIMEOUT_MS,
-  );
+  const settled =
+    !nativeStartTimedOut &&
+    (await waitForCodexTurnSettlement(
+      session,
+      params.activeTurnId,
+      INTERRUPT_SETTLEMENT_TIMEOUT_MS,
+    ));
   if (!settled) {
     sendThreadDeltas(session, [
       {
@@ -2745,12 +2780,12 @@ export const handleLine = createBridgeLineHandler({ handleParsedMessage });
 function killAllChildren(): void {
   for (const session of sessionsByBbThreadId.values()) {
     session.closing = true;
-    session.connection?.kill();
+    void session.connection?.kill();
     session.connection = null;
   }
   sessionsByBbThreadId.clear();
   for (const connection of maintenanceConnections) {
-    connection.kill();
+    void connection.kill();
   }
   maintenanceConnections.clear();
 }

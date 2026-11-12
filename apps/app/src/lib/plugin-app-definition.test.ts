@@ -453,7 +453,7 @@ describe("collectPluginAppRegistrations — experimental_threadList", () => {
 });
 
 describe("collectPluginAppRegistrations — experimental_sidebarFooter", () => {
-  it("collects actions and disclosures with live disclosure controls", () => {
+  it("collects actions and disclosures with live disclosure controls", async () => {
     let disclosure: ExperimentalSidebarFooterDisclosureController | null = null;
     const onActivate = vi.fn();
     const openPluginDetails = vi.fn();
@@ -517,7 +517,7 @@ describe("collectPluginAppRegistrations — experimental_sidebarFooter", () => {
     expect(compatibilityItem?.kind).toBe("action");
     if (compatibilityItem?.kind !== "action")
       throw new Error("expected action");
-    compatibilityItem.onActivate({ openPluginDetails });
+    await compatibilityItem.onActivate({ openPluginDetails });
     expect(legacyRun).toHaveBeenCalledOnce();
     expect(openPluginDetails).toHaveBeenCalledOnce();
 
@@ -615,6 +615,35 @@ describe("collectPluginAppRegistrations", () => {
       ).toEqual({ kind: "plugin", registration: registrations[0] });
     },
   );
+
+  it("resolves a file opener with no extensions only when named", () => {
+    const definition = definePluginApp((app) => {
+      app.slots.fileOpener({
+        id: "page",
+        title: "Page",
+        extensions: [],
+        component: Component,
+      });
+    });
+    const registrations = collectPluginAppRegistrations(
+      definition,
+    ).fileOpeners.map((registration) => ({
+      ...registration,
+      pluginId: "pages",
+      generation: 1,
+    }));
+
+    expect(
+      resolveFileOpenerReplacement({ registrations, path: "report.html" }),
+    ).toEqual({ kind: "owner" });
+    expect(
+      resolveFileOpenerReplacement({
+        registrations,
+        path: "report.html",
+        override: { pluginId: "pages", openerId: "page" },
+      }),
+    ).toEqual({ kind: "plugin", registration: registrations[0] });
+  });
 
   it.each([
     "_board",
@@ -1194,17 +1223,17 @@ describe("collectPluginAppRegistrations", () => {
       /"path" must match/,
     ],
     [
-      "file opener with no extensions",
+      "file opener without an extensions array",
       () =>
         definePluginApp((app) => {
           app.slots.fileOpener({
             id: "x",
             title: "X",
-            extensions: [],
+            extensions: "md",
             component: Component,
-          });
+          } as never);
         }),
-      /"extensions" must be a non-empty array/,
+      /"extensions" must be an array/,
     ],
     [
       "file opener with a dotted extension",

@@ -30,7 +30,6 @@ import {
   threadSearchSourceKindSchema,
   threadStatusSchema,
   threadTimelineActivePromptModeSchema,
-  threadTimelineGoalSchema,
   threadTimelineModelFallbackSchema,
   threadTimelinePendingTodosSchema,
   threadEventTypeValues,
@@ -435,10 +434,24 @@ export type CreateQueuedMessageRequest = z.infer<
   typeof createQueuedMessageRequestSchema
 >;
 
-export const updateQueuedMessageRequestSchema = z.object({
-  expectedUpdatedAt: z.number().int().nonnegative(),
-  input: z.array(promptInputSchema).min(1),
-});
+export const updateQueuedMessageRequestSchema = z
+  .object({
+    expectedUpdatedAt: z.number().int().nonnegative(),
+    input: z.array(promptInputSchema).min(1).optional(),
+    sendAt: z.number().int().nonnegative().nullable().optional(),
+    model: z.string().min(1).optional(),
+    reasoningLevel: reasoningLevelSchema.optional(),
+    permissionMode: permissionModeInputSchema.optional(),
+    serviceTier: serviceTierSchema.optional(),
+  })
+  .refine(
+    ({ expectedUpdatedAt: _expectedUpdatedAt, ...changes }) =>
+      Object.values(changes).some((value) => value !== undefined),
+    {
+      message:
+        "Provide at least one of input, sendAt, model, reasoningLevel, permissionMode, or serviceTier",
+    },
+  );
 export type UpdateQueuedMessageRequest = z.infer<
   typeof updateQueuedMessageRequestSchema
 >;
@@ -1055,7 +1068,6 @@ export const threadTimelineQuerySchema = z
     segmentLimit: z.string().regex(/^\d+$/),
     beforeAnchorSeq: z.string().regex(/^(0|[1-9]\d*)$/),
     beforeAnchorId: z.string().min(1),
-    summaryOnly: z.enum(["true", "false"]),
     afterTag: z.string().min(1),
     deferContent: z.enum(["true", "false"]),
   })
@@ -1221,7 +1233,7 @@ const threadTimelineWindowFieldsShape = {
   activeWorkflows: z.array(timelineWorkflowWorkRowSchema),
   activeBackgroundCommands: z.array(timelineWorkflowWorkRowSchema),
   pendingTodos: threadTimelinePendingTodosSchema.nullable(),
-  goal: threadTimelineGoalSchema.nullable(),
+  extensionStates: z.record(z.string(), jsonValueSchema),
   providerCommands: z
     .array(providerCommandSchema.omit({ pluginId: true }))
     .nullable(),
@@ -1238,7 +1250,7 @@ export const THREAD_TIMELINE_WINDOW_FIELD_KEYS = [
   "activeWorkflows",
   "activeBackgroundCommands",
   "pendingTodos",
-  "goal",
+  "extensionStates",
   "providerCommands",
   "sessionOptions",
   "modelFallback",
@@ -1309,6 +1321,19 @@ export const threadTimelineReadResponseSchema = z.union([
 ]);
 export type ThreadTimelineReadResponse = z.infer<
   typeof threadTimelineReadResponseSchema
+>;
+
+export const threadHeadStateResponseSchema = z.object({
+  activePromptMode: threadTimelineWindowFieldsShape.activePromptMode,
+  contextWindowUsage: threadContextWindowUsageSchema.nullable(),
+  extensionStates: threadTimelineWindowFieldsShape.extensionStates,
+  modelFallback: threadTimelineWindowFieldsShape.modelFallback,
+  pendingTodos: threadTimelineWindowFieldsShape.pendingTodos,
+  providerCommands: threadTimelineWindowFieldsShape.providerCommands,
+  sessionOptions: threadTimelineWindowFieldsShape.sessionOptions,
+});
+export type ThreadHeadStateResponse = z.infer<
+  typeof threadHeadStateResponseSchema
 >;
 
 export const threadTimelineSignalSchema = z

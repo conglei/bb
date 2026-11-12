@@ -17,13 +17,15 @@ import {
   pluginSafeModeQueryKey,
   pluginSettingsViewQueryKey,
 } from "../queries/query-keys";
+import { setQueryDataOverInFlightFetch } from "./cache-effect-utils";
 
 export function applyPluginSettingsView(args: {
   queryClient: QueryClient;
   pluginId: string;
   view: PluginSettingsView;
 }): void {
-  args.queryClient.setQueryData(
+  setQueryDataOverInFlightFetch<PluginSettingsView>(
+    args.queryClient,
     pluginSettingsViewQueryKey(args.pluginId),
     args.view,
   );
@@ -66,7 +68,8 @@ export function applyPluginInstallJob(args: {
   queryClient: QueryClient;
   job: PluginInstallJob;
 }): void {
-  args.queryClient.setQueryData<PluginInstallJob[]>(
+  setQueryDataOverInFlightFetch<PluginInstallJob[]>(
+    args.queryClient,
     pluginInstallJobsQueryKey(),
     (current) => {
       const jobs = current ?? [];
@@ -112,12 +115,18 @@ export async function markEnabledPluginListStale(args: {
   });
 }
 
+export function refreshPluginCatalogSearch(args: {
+  queryClient: QueryClient;
+}): Promise<void> {
+  return args.queryClient.invalidateQueries({
+    queryKey: allPluginCatalogSearchQueryKeyPrefix(),
+  });
+}
+
 export function invalidatePluginCatalogSearch(args: {
   queryClient: QueryClient;
 }): void {
-  void args.queryClient.invalidateQueries({
-    queryKey: allPluginCatalogSearchQueryKeyPrefix(),
-  });
+  void refreshPluginCatalogSearch(args);
 }
 
 export function invalidatePluginMarketplaces(args: {
@@ -134,7 +143,8 @@ export function applyPluginUpdateJob(args: {
   job: PluginUpdateJob;
 }): void {
   trackPluginUpdate(args.job.id, true);
-  args.queryClient.setQueryData<PluginUpdateJob[]>(
+  setQueryDataOverInFlightFetch<PluginUpdateJob[]>(
+    args.queryClient,
     pluginUpdateJobsQueryKey(),
     (current) => {
       const jobs = current ?? [];

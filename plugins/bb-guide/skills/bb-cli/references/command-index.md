@@ -129,6 +129,8 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb updates app`
 - `bb updates app status`
 - `bb updates app apply`
+- `bb updates app cancel`
+- `bb updates app auto`
 - `bb updates app dismiss`
 
 ## terminal
@@ -137,6 +139,7 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb terminal list`
 - `bb terminal create`
 - `bb terminal start`
+- `bb terminal run`
 - `bb terminal show`
 - `bb terminal attach`
 - `bb terminal send`

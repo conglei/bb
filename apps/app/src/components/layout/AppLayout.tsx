@@ -111,6 +111,7 @@ import { useQuickCreateProjectController } from "@/hooks/useQuickCreateProject";
 import { IframeDragGuardOverlay } from "@/lib/iframe-drag-guard";
 import { dispatchBrowserViewBoundsSync } from "@/lib/browser-view-bounds-sync";
 import { useFaviconBadge } from "@/lib/favicon-color-preference";
+import { shellSetBadge } from "@/lib/native-shell";
 import {
   desktopAttentionThreads,
   shouldShowFaviconAttentionDot,
@@ -429,7 +430,11 @@ function AppHeader({
         />
       </div>
     ) : pluginPanelChrome ? (
-      <PluginPanelHeaderCenter chrome={pluginPanelChrome} />
+      <PluginPanelHeaderCenter
+        chrome={pluginPanelChrome}
+        panel={pluginPanel}
+        subPath={pluginPanelSubPath ?? ""}
+      />
     ) : hasCenterContent ? (
       <div className="min-w-0 flex-1">
         {headerTitle ? (
@@ -749,11 +754,17 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     ? "unread"
     : "none";
   useFaviconBadge(faviconBadge);
+  const attentionThreads = useMemo(
+    () => desktopAttentionThreads(sidebarThreads),
+    [sidebarThreads],
+  );
+  const pendingThreadCount = attentionThreads.pendingThreadIds.length;
   useEffect(() => {
-    window.bbDesktop?.setAttentionThreads?.(
-      desktopAttentionThreads(sidebarThreads),
-    );
-  }, [sidebarThreads]);
+    window.bbDesktop?.setAttentionThreads?.(attentionThreads);
+  }, [attentionThreads]);
+  useEffect(() => {
+    shellSetBadge(pendingThreadCount);
+  }, [pendingThreadCount]);
   useEffect(
     () => () =>
       window.bbDesktop?.setAttentionThreads?.({
@@ -838,19 +849,6 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     document.title = documentTitle;
   }, [documentTitle]);
 
-  if (canonicalThreadRoutePath !== null) {
-    return (
-      <Navigate
-        to={{
-          pathname: canonicalThreadRoutePath,
-          search: location.search,
-          hash: location.hash,
-        }}
-        replace
-      />
-    );
-  }
-
   return (
     <SidebarThreadEntriesProvider navigation={sidebarNavigationQuery.data}>
       <TooltipProvider delayDuration={300} disableHoverableContent>
@@ -858,6 +856,16 @@ function AppLayoutContent({ children }: AppLayoutProps) {
           <ThreadTitleMentionResourcesProvider {...titleMentionResources}>
             <ThreadActionsProvider>
               <SidebarStateBridge usesDesktopChrome={usesDesktopChrome}>
+                {canonicalThreadRoutePath !== null ? (
+                  <Navigate
+                    to={{
+                      pathname: canonicalThreadRoutePath,
+                      search: location.search,
+                      hash: location.hash,
+                    }}
+                    replace
+                  />
+                ) : null}
                 {backToAppRoutePath !== null && !isSidebarResizing ? (
                   <BackToAppCommandHandler routePath={backToAppRoutePath} />
                 ) : null}

@@ -33,11 +33,8 @@ import { useRouteState } from "@/hooks/useRouteState";
 import { useDialogState } from "@bb/shared-ui/use-dialog-state";
 import { showMutationErrorToast } from "@/lib/mutation-errors";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
-import {
-  ThreadRenameDialog,
-  type ThreadRenameDialogPayload,
-  type ThreadRenameDialogTarget,
-} from "@/components/dialogs/ThreadRenameDialog";
+import { useRenameController } from "@bb/shared-ui/inline-rename";
+import { RenameControllerProvider } from "@/components/sidebar/SidebarInlineRename";
 import {
   ThreadDeleteDialog,
   type ThreadDeleteDialogTarget,
@@ -52,7 +49,7 @@ import { getThreadReadToggleAction } from "@bb/client-core";
 import { getRootComposeRoutePath, getThreadRoutePath } from "@/lib/route-paths";
 import { getDesktopBrowserApi } from "@/lib/bb-desktop";
 import { useRouteNavigate } from "@/components/ui/app-route-anchor";
-import { resolveThread } from "@/lib/cached-thread";
+import { lookupCachedThread, resolveThread } from "@/lib/cached-thread";
 import { CORE_THREAD_ACTIONS } from "@/lib/thread-actions/core-thread-actions";
 import { ThreadActionCollectors } from "@/lib/thread-actions/thread-action-registry";
 import { planThreadSelection } from "@/lib/thread-selection-plan";
@@ -63,7 +60,6 @@ export interface ThreadActionsContextValue {
   requestArchive: (thread: Thread) => void;
   requestArchiveThreads: (threads: readonly Thread[]) => void;
   renameThreadAsync: (threadId: string, title: string) => Promise<void>;
-  requestRename: (thread: Thread) => void;
   requestDelete: (thread: Thread) => void;
   requestDeleteThreads: (threads: readonly Thread[]) => void;
   unarchiveThread: (thread: Thread) => void;
@@ -104,6 +100,15 @@ function describeThreadCount(count: number): string {
 
 const ARCHIVE_UNDO_TOAST_DURATION_MS = 10_000;
 
+function hasRunningWork(thread: Thread): boolean {
+  return (
+    thread.archivedAt === null &&
+    (thread.status === "starting" ||
+      thread.status === "active" ||
+      thread.status === "stopping")
+  );
+}
+
 export function ThreadActionsProvider({
   children,
 }: ThreadActionsProviderProps) {
@@ -130,7 +135,6 @@ export function ThreadActionsProvider({
   const pinThread = usePinThread();
   const unpinThread = useUnpinThread();
   const deleteThread = useDeleteThread();
-  const updateThread = useUpdateThread();
   const inlineRenameThread = useUpdateThread({ showErrorToast: false });
   const threadActionContextAbortRef = useRef<AbortController | null>(null);
   const { mutateAsync: archiveThreadAndChildrenMutateAsync } =
@@ -141,14 +145,12 @@ export function ThreadActionsProvider({
   const { mutate: pinMutate } = pinThread;
   const { mutate: unpinMutate } = unpinThread;
   const { mutateAsync: deleteMutateAsync } = deleteThread;
-  const { mutate: updateMutate } = updateThread;
   const { mutateAsync: inlineRenameMutateAsync } = inlineRenameThread;
 
-  const renameDialog = useDialogState<ThreadRenameDialogTarget>();
+  const renameController = useRenameController();
   const deleteDialog = useDialogState<DeleteDialogRequest>();
   const archiveDialog = useDialogState<ArchiveDialogRequest>();
 
-  const { onClose: closeRenameDialog, onOpen: openRenameDialog } = renameDialog;
   const { onClose: closeDeleteDialog, onOpen: openDeleteDialog } = deleteDialog;
   const { onClose: closeArchiveDialog, onOpen: openArchiveDialog } =
     archiveDialog;
@@ -173,16 +175,6 @@ export function ThreadActionsProvider({
     [navigate],
   );
 
-  const requestRename = useCallback(
-    (thread: Thread) => {
-      openRenameDialog({
-        id: thread.id,
-        currentTitle: getThreadDisplayTitle(thread),
-      });
-    },
-    [openRenameDialog],
-  );
-
   const renameThreadAsync = useCallback(
     async (threadId: string, title: string) => {
       await inlineRenameMutateAsync({ id: threadId, title });
@@ -190,18 +182,20 @@ export function ThreadActionsProvider({
     [inlineRenameMutateAsync],
   );
 
-  const submitRename = useCallback(
-    (threadId: string, payload: ThreadRenameDialogPayload) => {
-      updateMutate(
-        { id: threadId, ...payload },
-        {
-          onSuccess: () => {
-            closeRenameDialog();
-          },
-        },
-      );
+  const { start: startRename } = renameController;
+  const requestRename = useCallback(
+    (thread: Thread) => {
+      void startRename({
+        kind: "thread",
+        id: thread.id,
+        name: getThreadDisplayTitle(thread),
+        label: "Thread name",
+        onSave: (title) => renameThreadAsync(thread.id, title),
+        ownerKey: "thread-actions",
+        presentation: "dialog",
+      });
     },
-    [closeRenameDialog, updateMutate],
+    [renameThreadAsync, startRename],
   );
 
   const claimThreadActionContextAbortController =
@@ -274,7 +268,7 @@ export function ThreadActionsProvider({
     ],
   );
 
-  const requestDeleteThreads = useCallback(
+  const planAndRequestDeleteThreads = useCallback(
     async (threads: readonly Thread[]) => {
       if (threads.length === 0) return;
       const plan = await claimSelectionPlan(threads, "delete");
@@ -291,8 +285,13 @@ export function ThreadActionsProvider({
     [claimSelectionPlan, openDeleteDialog],
   );
 
+  const requestDeleteThreads = useCallback(
+    (threads: readonly Thread[]) => void planAndRequestDeleteThreads(threads),
+    [planAndRequestDeleteThreads],
+  );
+
   const requestDelete = useCallback(
-    (thread: Thread) => void requestDeleteThreads([thread]),
+    (thread: Thread) => requestDeleteThreads([thread]),
     [requestDeleteThreads],
   );
 
@@ -454,7 +453,7 @@ export function ThreadActionsProvider({
     ],
   );
 
-  const requestArchiveThreads = useCallback(
+  const planAndArchiveThreads = useCallback(
     async (threads: readonly Thread[]) => {
       const active = threads.filter((thread) => thread.archivedAt === null);
       if (active.length === 0) return;
@@ -464,6 +463,14 @@ export function ThreadActionsProvider({
         threads: active,
         roots: plan.roots,
         childThreadCount: plan.childThreadCount,
+        stopsRunningWork:
+          active.some(hasRunningWork) ||
+          [...plan.cascadeThreadIdsByRootId.values()].some((threadIds) =>
+            threadIds.some((threadId) => {
+              const thread = lookupCachedThread(queryClient, threadId);
+              return thread !== null && hasRunningWork(thread);
+            }),
+          ),
       };
       if (confirmThreadArchive && plan.childThreadCount > 0) {
         openArchiveDialog(request);
@@ -476,11 +483,17 @@ export function ThreadActionsProvider({
       confirmThreadArchive,
       openArchiveDialog,
       performArchiveThreads,
+      queryClient,
     ],
   );
 
+  const requestArchiveThreads = useCallback(
+    (threads: readonly Thread[]) => void planAndArchiveThreads(threads),
+    [planAndArchiveThreads],
+  );
+
   const requestArchive = useCallback(
-    (thread: Thread) => void requestArchiveThreads([thread]),
+    (thread: Thread) => requestArchiveThreads([thread]),
     [requestArchiveThreads],
   );
 
@@ -535,7 +548,6 @@ export function ThreadActionsProvider({
     () => ({
       archiveEnvironmentThreads,
       renameThreadAsync,
-      requestRename,
       requestArchive,
       requestArchiveThreads,
       requestDelete,
@@ -549,7 +561,6 @@ export function ThreadActionsProvider({
       renameThreadAsync,
       requestArchive,
       requestArchiveThreads,
-      requestRename,
       requestDelete,
       requestDeleteThreads,
       togglePin,
@@ -575,13 +586,9 @@ export function ThreadActionsProvider({
         coreRegistrations={CORE_THREAD_ACTIONS}
         requestRename={requestRenameById}
       />
-      {children}
-      <ThreadRenameDialog
-        target={renameDialog.target}
-        pending={updateThread.isPending}
-        onOpenChange={renameDialog.onOpenChange}
-        onRename={submitRename}
-      />
+      <RenameControllerProvider controller={renameController}>
+        {children}
+      </RenameControllerProvider>
       <ThreadDeleteDialog
         target={deleteDialog.target}
         pending={deleteThread.isPending}

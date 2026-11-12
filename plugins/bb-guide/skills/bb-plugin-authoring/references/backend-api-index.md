@@ -1,12 +1,14 @@
 # Backend API symbol index
 
-Check backend, host, AI-service, and test imports here; read the backend references for behavior and examples, and the installed declarations for exact signatures.
+Check imports here, behavior in the Plugin Guide, and signatures in the installed declarations.
 
 ## `@get-bb/plugin-sdk`
 
 - `PLUGIN_CLI_OUTPUT_MAX_BYTES`
 - `defineRpcContract`
 - `experimental_defineHostEntry`
+- `experimental_joinHostPath`, `experimental_getHostPathDirname`, `experimental_getHostPathBasename`, `experimental_getRelativeHostPath`, `experimental_getHostPathComparisonKey`
+- `experimental_normalizeHostPath`, `experimental_resolveHostPath`, `experimental_isHostPathWithin`
 - `defineCli`
 - `cliCommand`
 - `PluginCliError`
@@ -64,12 +66,8 @@ Check backend, host, AI-service, and test imports here; read the backend referen
 - `ExperimentalLiveFileTarget`
 - `ExperimentalPermissionModePickerProps`
 - `ExperimentalPluginFixedTabReference`
-- `ExperimentalPluginOwnerProject`, `ExperimentalPluginProjectScope`
-- `ExperimentalPluginWorkspace`, `ExperimentalPluginWorkspaceSpawnArgs`
-- `ExperimentalPluginProjectSettings`, `ExperimentalPluginProjectSettingsHandle`
-- `ExperimentalPluginRpcCaller`
-- `ExperimentalPluginRpcHandlerContext`
-- `ExperimentalPluginRpcHandlersWithContext`
+- `ExperimentalPluginOwnerProject`, `ExperimentalPluginProjectScope`, `ExperimentalPluginProjectSettings`, `ExperimentalPluginProjectSettingsHandle`, `ExperimentalPluginWorkspace`, `ExperimentalPluginWorkspaceSpawnArgs`
+- `ExperimentalPluginRpcCaller`, `ExperimentalPluginRpcHandlerContext`, `ExperimentalPluginRpcHandlersWithContext`
 - `ExperimentalPluginWebSocket`
 - `ExperimentalPluginWebSocketContext`
 - `ExperimentalPluginWebSocketHandler`
@@ -203,7 +201,6 @@ Check backend, host, AI-service, and test imports here; read the backend referen
 - `ExperimentalComposerThreadLink`
 - `ExperimentalComposerThreadLinks`
 - `ExperimentalComposerThreadRelation`
-- `ExperimentalComposerView`
 - `ExperimentalComposerVoice`
 - `ExperimentalDroppedThreadMention`
 - `ExperimentalFailedVoiceRecording`
@@ -342,8 +339,9 @@ Check backend, host, AI-service, and test imports here; read the backend referen
 - `PluginThreadEventName`
 - `PluginThreadEventPayloads`
 - `ExperimentalThreadInfoProps`
-- `ExperimentalThreadInfoRowRegistration`
-- `ExperimentalThreadInfoSectionRegistration`
+- `ExperimentalThreadInfoRowRegistration`, `ExperimentalThreadInfoSectionRegistration`
+- `ExperimentalThreadHeaderRowRegistration`, `ExperimentalThreadHeaderRowProps`,
+  `ExperimentalThreadHeaderTitleRegistration`, `ExperimentalThreadHeaderTitleProps`
 - `ExperimentalThreadContextCardRowRegistration`
 - `ExperimentalThreadContextCardSectionRegistration`
 - `ExperimentalThreadContextCardProps`

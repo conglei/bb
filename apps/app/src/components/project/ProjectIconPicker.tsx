@@ -112,7 +112,6 @@ export function ProjectIconPicker({
                   <CommandItem
                     key={name}
                     value={name}
-                    title={name}
                     aria-label={name}
                     onSelect={() => choose(name)}
                     className={cn(
