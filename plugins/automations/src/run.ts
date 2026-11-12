@@ -35,6 +35,9 @@ type AgentThreadsSdk = {
   spawn(
     args: Parameters<BbPluginApi["sdk"]["threads"]["spawn"]>[0],
   ): Promise<unknown>;
+  unarchive(
+    args: Parameters<BbPluginApi["sdk"]["threads"]["unarchive"]>[0],
+  ): Promise<unknown>;
 };
 export type AgentRunApi = Pick<BbPluginApi, "realtime" | "log"> & {
   sdk: { threads: AgentThreadsSdk };
@@ -95,7 +98,6 @@ function renderAutomationDueMessage(args: {
 
 function unusableThreadReason(thread: SdkThread): string | null {
   if (thread.deletedAt !== null) return "was deleted";
-  if (thread.archivedAt !== null) return "was archived";
   switch (thread.status) {
     case "idle":
     case "active":
@@ -196,6 +198,12 @@ async function reuseTargetThreadForRun(
     thread = sdkThreadSchema.parse(
       await bb.sdk.threads.get({ threadId: args.targetThreadId }),
     );
+    if (thread.deletedAt === null && thread.archivedAt !== null) {
+      await bb.sdk.threads.unarchive({ threadId: args.targetThreadId });
+      thread = sdkThreadSchema.parse(
+        await bb.sdk.threads.get({ threadId: args.targetThreadId }),
+      );
+    }
   } catch (error) {
     if (!isThreadGoneError(error)) throw error;
     closeRunForUnusableTargetThread(bb, db, {

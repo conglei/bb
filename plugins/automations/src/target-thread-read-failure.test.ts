@@ -11,6 +11,10 @@ async function createHost(
   readThread: () => Promise<unknown> = async () => {
     throw new Error("temporary thread read failure");
   },
+  threadWrites: {
+    send?: (args: unknown) => Promise<unknown>;
+    unarchive?: (args: unknown) => Promise<unknown>;
+  } = {},
 ) {
   const host = createFakePluginHost({
     pluginId: "automations",
@@ -60,11 +64,16 @@ async function createHost(
         async get() {
           return readThread();
         },
-        async send() {
-          return { ok: true };
+        async send(args) {
+          return threadWrites.send?.(args) ?? { ok: true };
         },
         async spawn() {
           throw new Error("unexpected spawn");
+        },
+        async unarchive(args) {
+          if (!threadWrites.unarchive) throw new Error("unexpected unarchive");
+          await threadWrites.unarchive(args);
+          return { ok: true };
         },
       },
     },
@@ -162,16 +171,6 @@ describe("target thread read failures", () => {
       },
       error: "Target thread thr_target no longer exists",
     },
-    {
-      cause: "an archived thread",
-      readThread: async () => ({
-        id: THREAD_ID,
-        status: "idle",
-        archivedAt: 1,
-        deletedAt: null,
-      }),
-      error: "Target thread thr_target was archived",
-    },
   ])(
     "disables target automations with the reason for $cause",
     async ({ readThread, error }) => {
@@ -205,6 +204,47 @@ describe("target thread read failures", () => {
       await host.harness.dispose();
     },
   );
+
+  it("unarchives an archived target thread and sends the run to it", async () => {
+    let archivedAt: number | null = 1;
+    const unarchive = vi.fn(async () => {
+      archivedAt = null;
+    });
+    const send = vi.fn(async () => ({ ok: true }));
+    const host = await createHost(
+      async () => ({
+        id: THREAD_ID,
+        status: "idle",
+        archivedAt,
+        deletedAt: null,
+      }),
+      { send, unarchive },
+    );
+    const service = createService(host);
+    const automation = await createTargetAutomation(service, "Archived target");
+
+    await service.run({ projectId: PROJECT_ID, automationId: automation.id });
+
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    expect(unarchive).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: THREAD_ID }),
+    );
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: THREAD_ID }),
+    );
+    expect(
+      service.runs({
+        projectId: PROJECT_ID,
+        automationId: automation.id,
+        limit: 1,
+      }).runs[0],
+    ).toMatchObject({ threadId: THREAD_ID, error: null });
+    expect(
+      await service.get({ projectId: PROJECT_ID, automationId: automation.id }),
+    ).toMatchObject({ enabled: true, lastError: null });
+
+    await host.harness.dispose();
+  });
 });
 
 describe("target threads whose last turn failed", () => {
