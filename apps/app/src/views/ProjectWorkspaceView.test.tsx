@@ -20,6 +20,12 @@ import { resetAllCrashedPluginSlotsForTest } from "@/components/plugin/PluginSlo
 import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView";
 
+const compactViewportMock = vi.hoisted(() => ({ value: false }));
+
+vi.mock("@bb/shared-ui/hooks/use-compact-viewport", () => ({
+  useIsCompactViewport: () => compactViewportMock.value,
+}));
+
 const sidebarNavigationMock = vi.hoisted(() => ({
   data: {
     sections: [],
@@ -99,6 +105,7 @@ function renderAt(pathname: string) {
 
 afterEach(() => {
   cleanup();
+  compactViewportMock.value = false;
   projectPluginsMock.data = [{ pluginId: "kept", enabled: true }];
   projectPluginsMock.isError = false;
   resetPluginSlotStoreForTest();
@@ -347,5 +354,52 @@ describe("ProjectWorkspaceView", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(2);
     consoleError.mockRestore();
     consoleWarn.mockRestore();
+  });
+
+  describe("on a compact viewport", () => {
+    function renderCompact(pathname: string) {
+      compactViewportMock.value = true;
+      setPluginSlotRegistrations(
+        "kept",
+        makePluginRegistrationSet({
+          projectViews: [
+            {
+              id: "today",
+              title: "Today",
+              icon: "Coffee",
+              component: () => <div>today body</div>,
+            },
+          ],
+        }),
+      );
+      act(() => {
+        markPluginFrontendsSettled();
+      });
+      return renderAt(pathname);
+    }
+
+    it("moves the tabs below the body and titles the page with the view", () => {
+      renderCompact("/projects/proj_kept/views/kept.today");
+
+      const nav = screen.getByRole("navigation", { name: "Project views" });
+      const body = screen.getByTestId("project-view-body");
+      expect(
+        body.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Today" }),
+      ).toBeDefined();
+      expect(screen.getByRole("tab", { name: "Today" }).getAttribute("aria-selected")).toBe("true");
+    });
+
+    it("gives a view's own sub-page the whole screen", () => {
+      renderCompact("/projects/proj_kept/views/kept.today/brief/brf_1");
+
+      expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+      expect(
+        screen.queryByRole("navigation", { name: "Project views" }),
+      ).toBeNull();
+      expect(screen.getByText("today body")).toBeDefined();
+    });
   });
 });

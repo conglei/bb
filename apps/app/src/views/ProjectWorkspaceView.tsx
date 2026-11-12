@@ -38,6 +38,67 @@ export function defaultProjectViewKey(
     : projectViewKeyOf(claimed);
 }
 
+function ProjectViewIcon({
+  view,
+  className,
+}: {
+  view: ExperimentalProjectViewSlot;
+  className: string;
+}) {
+  return view.pluginId === CORE_PROJECT_VIEW_PLUGIN_ID ? (
+    <Icon name={view.icon} className={className} />
+  ) : (
+    <PluginItemIcon
+      pluginId={view.pluginId}
+      icon={view.icon}
+      className={className}
+    />
+  );
+}
+
+function ProjectViewBottomBar({
+  projectId,
+  views,
+  activeViewKey,
+}: {
+  projectId: string;
+  views: readonly ExperimentalProjectViewSlot[];
+  activeViewKey: string | null;
+}) {
+  return (
+    <nav
+      aria-label="Project views"
+      className="shrink-0 border-t border-border-hairline bg-background pb-(--bb-content-bottom-inset)"
+    >
+      <ul role="tablist" className="flex overflow-x-auto [scrollbar-width:none]">
+        {views.map((view) => {
+          const key = projectViewKeyOf(view);
+          const isActive = key === activeViewKey;
+          return (
+            <li key={key} role="presentation" className="min-w-16 flex-1 basis-0">
+              <Link
+                role="tab"
+                aria-selected={isActive}
+                to={getProjectViewRoutePath(projectId, key)}
+                replace
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-2xs transition-colors",
+                  isActive
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground active:text-foreground",
+                )}
+              >
+                <ProjectViewIcon view={view} className="size-5 shrink-0" />
+                <span className="max-w-full truncate">{view.title}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 function ProjectViewTabs({
   projectId,
   views,
@@ -73,15 +134,7 @@ function ProjectViewTabs({
                     : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
-                {view.pluginId === CORE_PROJECT_VIEW_PLUGIN_ID ? (
-                  <Icon name={view.icon} className="size-3.5 shrink-0" />
-                ) : (
-                  <PluginItemIcon
-                    pluginId={view.pluginId}
-                    icon={view.icon}
-                    className="size-3.5 shrink-0"
-                  />
-                )}
+                <ProjectViewIcon view={view} className="size-3.5 shrink-0" />
                 {view.title}
               </Link>
             </li>
@@ -143,19 +196,45 @@ export function ProjectWorkspaceView({
           (candidate) => projectViewKeyOf(candidate) === activeViewKey,
         ) ?? null);
 
+  const showBottomBar = isCompactViewport && subPath === "";
+
   return (
-    <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col md:-mx-5 md:-mt-5">
-      <div className="mx-auto w-full max-w-[760px] shrink-0 px-4 pt-2">
-        <ProjectViewTabs
-          projectId={projectId}
-          views={projectViews}
-          activeViewKey={activeViewKey}
-        />
-      </div>
+    <div
+      className={cn(
+        "-mx-4 -mt-4 flex min-h-0 flex-1 flex-col md:-mx-5 md:-mt-5",
+        isCompactViewport &&
+          "-mb-[calc(1rem+var(--bb-content-bottom-inset,0px))]",
+      )}
+    >
+      {isCompactViewport ? null : (
+        <div className="mx-auto w-full max-w-[760px] shrink-0 px-4 pt-2">
+          <ProjectViewTabs
+            projectId={projectId}
+            views={projectViews}
+            activeViewKey={activeViewKey}
+          />
+        </div>
+      )}
       <PageShell
-        shellClassName="mx-0 mt-0 md:mx-0 md:mt-0"
-        contentClassName="pt-4 md:pt-5"
+        shellClassName={
+          isCompactViewport ? "mx-0 mt-0 mb-0" : "mx-0 mt-0 md:mx-0 md:mt-0"
+        }
+        contentClassName={
+          showBottomBar
+            ? "pt-1 pb-8"
+            : isCompactViewport
+              ? "pt-1 pb-[calc(2rem+var(--bb-content-bottom-inset,0px))]"
+              : "pt-4 md:pt-5"
+        }
       >
+        {isCompactViewport &&
+        view !== null &&
+        view.pluginId !== CORE_PROJECT_VIEW_PLUGIN_ID &&
+        subPath === "" ? (
+          <h1 className="text-page-title font-bold text-foreground">
+            {view.title}
+          </h1>
+        ) : null}
         {view === null ? (
           settled ? (
             <EmptyStatePanel
@@ -186,6 +265,13 @@ export function ProjectWorkspaceView({
           </div>
         )}
       </PageShell>
+      {showBottomBar ? (
+        <ProjectViewBottomBar
+          projectId={projectId}
+          views={projectViews}
+          activeViewKey={activeViewKey}
+        />
+      ) : null}
     </div>
   );
 }
