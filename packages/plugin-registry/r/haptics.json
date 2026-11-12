@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "haptics",
+  "type": "registry:lib",
+  "title": "haptics",
+  "description": "BB lib \"haptics\" — vendored from the BB app's own source (version-matched to this BB release).",
+  "files": [
+    {
+      "path": "registry/lib/haptics.ts",
+      "content": "export type HapticKind =\n  | \"selection\"\n  | \"impact-light\"\n  | \"impact-medium\"\n  | \"impact-heavy\"\n  | \"success\"\n  | \"warning\"\n  | \"error\";\n\nexport type HapticHandler = (kind: HapticKind) => void;\n\nconst HAPTIC_HANDLER_KEY = Symbol.for(\"bb.haptics.v1\");\n\nexport function registerHapticHandler(handler: HapticHandler | null): void {\n  Reflect.set(globalThis, HAPTIC_HANDLER_KEY, handler);\n}\n\nexport function triggerHaptic(kind: HapticKind): boolean {\n  const handler: unknown = Reflect.get(globalThis, HAPTIC_HANDLER_KEY);\n  if (typeof handler !== \"function\") return false;\n  (handler as HapticHandler)(kind);\n  return true;\n}\n",
+      "type": "registry:lib",
+      "target": "lib/haptics.ts"
+    }
+  ]
+}

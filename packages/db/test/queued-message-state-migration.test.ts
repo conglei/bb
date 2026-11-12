@@ -11,6 +11,9 @@ import {
   dropProjectIconColumn,
   dropProjectOwnerColumns,
   dropThreadParentNotificationsColumn,
+  dropQueuedMessageDeliveryColumns,
+  dropPluginFailureLabelColumns,
+  dropThreadStatusChangedAtColumn,
   rewindQueuedMessageStateMigration,
 } from "./helpers/rewind.js";
 
@@ -59,6 +62,9 @@ function rewoundDatabase(): { db: DbConnection; threadId: string } {
   });
   rewindQueuedMessageStateMigration(db);
   dropThreadParentNotificationsColumn(db);
+  dropQueuedMessageDeliveryColumns(db);
+  dropThreadStatusChangedAtColumn(db);
+  dropPluginFailureLabelColumns(db);
   dropProjectOwnerColumns(db);
   dropProjectIconColumn(db);
   return { db, threadId: thread.id };

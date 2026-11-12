@@ -7,11 +7,12 @@ import type {
   UploadedPromptAttachment,
 } from "@bb/server-contract";
 import { sdk } from "@/lib/sdk";
-import { projectPluginsQueryKey } from "../queries/query-keys";
 import { registerLocalAttachmentPreview } from "@/lib/attachment-local-previews";
+import { uploadWithinPromptAttachmentLimit } from "@/lib/prompt-attachment-size";
 import {
   applyProjectCreateResult,
   applyProjectDeleteResult,
+  applyProjectPluginsResult,
   applyProjectUpdateResult,
 } from "../cache-owners/project-cache-owner";
 import {
@@ -224,10 +225,11 @@ export function useSetProjectPluginEnabled() {
     mutationFn: (request: SetProjectPluginEnabledRequest) =>
       sdk.projects.plugins.set(request),
     onSuccess: (entries, variables) => {
-      queryClient.setQueryData(
-        projectPluginsQueryKey(variables.projectId),
+      applyProjectPluginsResult({
         entries,
-      );
+        projectId: variables.projectId,
+        queryClient,
+      });
     },
   });
 }
@@ -242,10 +244,9 @@ export function useUploadPromptAttachment() {
       projectId,
       file,
     }: UploadPromptAttachmentRequest): Promise<UploadedPromptAttachment> => {
-      const uploaded = await sdk.projects.attachments.upload({
-        projectId,
-        clientFile: file,
-      });
+      const uploaded = await uploadWithinPromptAttachmentLimit(file, () =>
+        sdk.projects.attachments.upload({ projectId, clientFile: file }),
+      );
       registerLocalAttachmentPreview(uploaded.path, file);
       return uploaded;
     },

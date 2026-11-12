@@ -299,7 +299,6 @@ export type PluginSettingSaveValue = string | number | boolean | null;
 
 export interface AutosavingPluginSettingProps {
   descriptor: PluginSettingFieldDescriptor;
-  /** Serializes concurrent saves of one field; unique per field and scope. */
   mutationScopeId: string;
   settingKey: string;
   storedValue: unknown;

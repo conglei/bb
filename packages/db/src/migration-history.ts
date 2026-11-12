@@ -9,6 +9,18 @@ export interface CompatibleMigrationHash {
   when: number;
 }
 
+export interface RelocatedForkMigration {
+  legacyWhen: number;
+  tag: string;
+}
+
+export const relocatedForkMigrations = [
+  { tag: "0157_project_plugin_states", legacyWhen: 1793467950375 },
+  { tag: "0158_plugin_project_storage", legacyWhen: 1793469246891 },
+  { tag: "0159_project_icon", legacyWhen: 1793475874596 },
+  { tag: "0160_project_owner", legacyWhen: 1793569767408 },
+] as const satisfies readonly RelocatedForkMigration[];
+
 export const publishedMigrationWhens = [
   { tag: "0000_baseline", when: 1778891867195 },
   { tag: "0001_terminal_session_user_input", when: 1779139400000 },

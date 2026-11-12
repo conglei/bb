@@ -1,10 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type {
+  ProjectPluginEntry,
   ProjectResponse,
   ProjectWithThreadsResponse,
   SidebarBootstrapResponse,
 } from "@bb/server-contract";
 import {
+  projectPluginsQueryKey,
   projectsQueryKey,
   sidebarNavigationQueryKey,
 } from "../queries/query-keys";
@@ -167,4 +169,16 @@ export function applyProjectDeleteResult({
         : currentNavigation,
   );
   invalidateProjectDeleteQueries({ queryClient });
+}
+
+export function applyProjectPluginsResult({
+  entries,
+  projectId,
+  queryClient,
+}: {
+  entries: ProjectPluginEntry[];
+  projectId: string;
+  queryClient: QueryClient;
+}): void {
+  queryClient.setQueryData(projectPluginsQueryKey(projectId), entries);
 }

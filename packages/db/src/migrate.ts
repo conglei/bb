@@ -7,6 +7,7 @@ import type { DbConnection } from "./connection.js";
 import {
   compatibleMigrationHashes,
   publishedMigrationWhensByTag,
+  relocatedForkMigrations,
 } from "./migration-history.js";
 
 export interface ResolveMigrationsFolderForModuleDirArgs {
@@ -1109,6 +1110,80 @@ function applyReorderedCleanupMigrations(
   }
 }
 
+function relocateForkMigrations(
+  db: DbConnection,
+  migrationsFolder: string,
+): void {
+  if (!tableExists(db, "__drizzle_migrations")) {
+    return;
+  }
+
+  const expectedMigrations = readExpectedAppliedMigrations(migrationsFolder);
+  const appliedMigrations = db.$client
+    .prepare<[], AppliedMigrationIdentityRow>(
+      `
+        SELECT hash, created_at AS createdAt
+        FROM __drizzle_migrations
+      `,
+    )
+    .all();
+  const relocations = relocatedForkMigrations.flatMap((relocation) => {
+    const migration = requireExpectedAppliedMigration(
+      expectedMigrations,
+      relocation.tag,
+    );
+    const legacyApplied = appliedMigrations.some(
+      (applied) =>
+        applied.createdAt === relocation.legacyWhen &&
+        applied.hash === migration.hash,
+    );
+    return legacyApplied ? [{ legacyWhen: relocation.legacyWhen, migration }] : [];
+  });
+  if (relocations.length === 0) {
+    return;
+  }
+
+  const relocatedTags = new Set<string>(
+    relocatedForkMigrations.map((relocation) => relocation.tag),
+  );
+  const firstRelocatedIndex = expectedMigrations.findIndex((migration) =>
+    relocatedTags.has(migration.tag),
+  );
+  const legacyWhens = new Set<number>(
+    relocations.map((relocation) => relocation.legacyWhen),
+  );
+  const appliedCreatedAts = new Set(
+    appliedMigrations
+      .map((migration) => migration.createdAt)
+      .filter(
+        (createdAt): createdAt is number =>
+          createdAt !== null && !legacyWhens.has(createdAt),
+      ),
+  );
+  const relocate = db.$client.transaction(() => {
+    const deleteLegacy = db.$client.prepare<[number]>(
+      "DELETE FROM __drizzle_migrations WHERE created_at = ?",
+    );
+    for (const relocation of relocations) {
+      deleteLegacy.run(relocation.legacyWhen);
+    }
+    for (const migration of expectedMigrations.slice(0, firstRelocatedIndex)) {
+      if (appliedCreatedAts.has(migration.createdAt)) {
+        continue;
+      }
+      for (const statement of migration.sql) {
+        db.$client.exec(statement);
+      }
+      markMigrationApplied(db, migration);
+    }
+    for (const relocation of relocations) {
+      markMigrationApplied(db, relocation.migration);
+    }
+  });
+
+  relocate();
+}
+
 function skipEventLargeValuesRoundTripForInlineEvents(
   db: DbConnection,
   migrationsFolder: string,
@@ -1454,6 +1529,7 @@ export function migrate(db: DbConnection, options: MigrateOptions = {}): void {
     const stagedThreadStorageDeletedAt =
       stageExistingThreadStorageDeletedAtColumn(db, migrationsFolder);
     try {
+      relocateForkMigrations(db, migrationsFolder);
       drizzleMigrate(db, { migrationsFolder });
     } finally {
       if (stagedConnectMachineId) restoreStagedConnectMachineIdColumn(db);

@@ -48,8 +48,8 @@ import {
   type ProjectMachineSetupCompletion,
   type ProjectMachineSetupDialogTarget,
 } from "@/components/dialogs/ProjectMachineSetupDialog";
-import { HEADER_ICON_BUTTON_CLASS } from "@/components/layout/AppPageHeader";
 import {
+  RIGHT_PANEL_TOGGLE_BUTTON_CLASS,
   RIGHT_PANEL_TOGGLE_ICON_NAME,
   RIGHT_PANEL_TOGGLE_SHORTCUT_HINT_CLASS,
 } from "@/components/secondary-panel/panelToggleControlState";
@@ -245,7 +245,7 @@ export function RootComposeRightPanelToggle({
       type="button"
       variant="ghost"
       size="icon"
-      className={cn(HEADER_ICON_BUTTON_CLASS, "relative")}
+      className={cn(RIGHT_PANEL_TOGGLE_BUTTON_CLASS, "relative")}
       aria-label={
         shortcut ? `${rightPanelLabel} (${shortcut.label})` : rightPanelLabel
       }
@@ -543,7 +543,7 @@ function RootComposeSurface({
     if (initialPrompt === null || searchInitialDraft === undefined) return;
     setPromptDraft(searchInitialDraft);
     if (!isPointerCoarse) window.requestAnimationFrame(focusPromptBox);
-    navigate(
+    void navigate(
       getRootComposeRoutePath() + stripInitialPromptFromSearch(location.search),
       { replace: true, state: location.state },
     );
@@ -588,7 +588,7 @@ function RootComposeSurface({
     if (shouldStartComposingFromLocationState(location.state)) {
       window.requestAnimationFrame(focusPromptBox);
     }
-    navigate(getRootComposeRoutePath() + location.search, {
+    void navigate(getRootComposeRoutePath() + location.search, {
       replace: true,
       state: null,
     });
@@ -613,7 +613,7 @@ function RootComposeSurface({
     } else {
       restorePromptDraftIfEmpty(nextDraft);
     }
-    navigate(getRootComposeRoutePath() + location.search, {
+    void navigate(getRootComposeRoutePath() + location.search, {
       replace: true,
       state: { focusPrompt: true },
     });
@@ -926,7 +926,6 @@ function RootComposeSurface({
     drawerVisibility: secondaryPanelDrawerVisibility,
     isCompactViewport,
     isPersistedOpen: isPersistedSecondaryPanelOpen,
-    openPersistedHostFile: panelFiles.openHostFile,
     openPersistedPanel: setRootSecondaryPanel,
     openPersistedStorageFile: panelFiles.openStorageFile,
     openPersistedWorkspaceFile: panelFiles.openWorkspaceFile,
@@ -974,7 +973,7 @@ function RootComposeSurface({
     (resource) => {
       if (resource.kind === "thread") {
         return () =>
-          navigate(
+          void navigate(
             getThreadRoutePath({
               projectId: resource.projectId ?? projectId,
               threadId: resource.threadId,
@@ -982,7 +981,8 @@ function RootComposeSurface({
           );
       }
       if (resource.kind === "project") {
-        return () => navigate(getProjectComposeRoutePath(resource.projectId));
+        return () =>
+          void navigate(getProjectComposeRoutePath(resource.projectId));
       }
       if (resource.kind !== "path" || resource.entryKind !== "file") {
         return null;
@@ -1386,10 +1386,15 @@ function RootComposeSurface({
     autoFocus: !isProviderCliBlocked,
     mentionMenuPlacement: isCompactViewport ? "top" : "bottom",
     banner: promptBanner,
-    blockedReason:
+    blocker:
       blockingProviderCliStatus === null
         ? undefined
-        : providerCliBlockedReason(blockingProviderCliStatus),
+        : {
+            message: providerCliBlockedReason(blockingProviderCliStatus),
+            reason: blockingProviderCliStatus.installed
+              ? "agent_update"
+              : "agent_missing",
+          },
     resolveMentionLink,
     pluginComposerHost,
     textEffects: promptTextEffects,

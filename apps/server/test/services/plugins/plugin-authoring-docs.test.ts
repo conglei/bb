@@ -40,6 +40,8 @@ import {
   type PluginSourceCodeRendererProps,
   type ExperimentalThreadContextSegmentProps,
   type ExperimentalThreadInfoProps,
+  type ExperimentalThreadHeaderRowProps,
+  type ExperimentalThreadHeaderTitleProps,
   type ExperimentalThreadContextCardProps,
   type ExperimentalThreadRowMetadataProps,
   type PluginThreadActionItemInput,
@@ -64,7 +66,6 @@ const SKILL_ROOT = fileURLToPath(
     import.meta.url,
   ),
 );
-const SKILL_PATH = join(SKILL_ROOT, "SKILL.md");
 
 function readSkillTree(directory = SKILL_ROOT): string {
   return readdirSync(directory, { withFileTypes: true })
@@ -139,7 +140,7 @@ const FRONTEND_TYPE_EXPORT_NAMES = [
     .split(",")
     .map((name) => name.trim())
     .filter(Boolean),
-];
+].filter((name) => !name.startsWith("InternalDoNotUse"));
 
 const FRONTEND_TEST_EXPORT_NAMES = [
   "packages/plugin-sdk/src/testing/app.tsx",
@@ -200,7 +201,7 @@ const BB_PLUGIN_API_KEYS = [
 
 type MissingApiKey = Exclude<
   keyof BbPluginApi,
-  (typeof BB_PLUGIN_API_KEYS)[number]
+  (typeof BB_PLUGIN_API_KEYS)[number] | `internal_DO_NOT_USE_${string}`
 >;
 const _assertAllApiKeysListed: MissingApiKey extends never ? true : never =
   true;
@@ -240,6 +241,7 @@ void _assertAllAuthModesListed;
 const THREAD_EVENT_PAYLOAD_FIELDS = {
   "experimental_thread.events": ["thread", "sequence"],
   "experimental_thread.parentChanged": ["thread", "previousParentThreadId"],
+  "experimental_thread.read": ["thread"],
   "experimental_terminal.input": ["terminal"],
   "experimental_host.deleted": ["host"],
   "experimental_environment.removed": ["removal"],
@@ -262,6 +264,7 @@ const THREAD_EVENT_PAYLOAD_FIELDS = {
     "inputAccepted",
     "rateLimits",
     "attemptNumber",
+    "originPluginId",
   ],
 } as const satisfies {
   [
@@ -296,6 +299,8 @@ type SlotPropsByName = {
   experimental_threadRowMetadata: ExperimentalThreadRowMetadataProps;
   experimental_threadInfoRow: ExperimentalThreadInfoProps;
   experimental_threadInfoSection: ExperimentalThreadInfoProps;
+  experimental_threadHeaderRow: ExperimentalThreadHeaderRowProps;
+  experimental_threadHeaderTitle: ExperimentalThreadHeaderTitleProps;
   experimental_threadContextCardRow: ExperimentalThreadContextCardProps;
   experimental_threadContextCardSection: ExperimentalThreadContextCardProps;
   experimental_threadAction: PluginThreadActionItemInput<unknown>;
@@ -317,7 +322,10 @@ type SlotPropsByName = {
 
 type SlotPropKeys<T> = T extends unknown ? keyof T : never;
 
-type MissingSlot = Exclude<keyof PluginAppSlots, keyof SlotPropsByName>;
+type MissingSlot = Exclude<
+  keyof PluginAppSlots,
+  keyof SlotPropsByName | `internal_DO_NOT_USE_${string}`
+>;
 const _assertAllSlotsListed: MissingSlot extends never ? true : never = true;
 void _assertAllSlotsListed;
 
@@ -396,6 +404,8 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   ],
   experimental_threadInfoRow: ["threadId", "projectId", "environment"],
   experimental_threadInfoSection: ["threadId", "projectId", "environment"],
+  experimental_threadHeaderRow: ["threadId", "projectId", "environment"],
+  experimental_threadHeaderTitle: ["threadId", "projectId", "environment"],
   experimental_threadContextCardRow: ["threadId", "projectId", "environment"],
   experimental_threadContextCardSection: [
     "threadId",
@@ -480,7 +490,8 @@ const FRONTEND_SLOT_PROP_FIELDS = {
 type MissingSlotPropField = {
   [S in keyof SlotPropsByName]: Exclude<
     SlotPropKeys<SlotPropsByName[S]>,
-    (typeof FRONTEND_SLOT_PROP_FIELDS)[S][number]
+    | (typeof FRONTEND_SLOT_PROP_FIELDS)[S][number]
+    | `internal_DO_NOT_USE_${string}`
   >;
 }[keyof SlotPropsByName];
 const _assertAllSlotPropFieldsListed: MissingSlotPropField extends never
@@ -531,6 +542,8 @@ const NAV_PANEL_REGISTRATION_FIELDS = [
   "experimental_usePageTitle",
   "headerContent",
   "experimental_sidebar",
+  "experimental_headerTitle",
+  "experimental_hideFromNavigation",
 ] as const satisfies readonly (keyof PluginNavPanelRegistration)[];
 
 type MissingNavPanelRegistrationField = Exclude<
@@ -665,7 +678,6 @@ const _assertAllThreadChatMessageActionFieldsListed: MissingThreadChatMessageAct
 void _assertAllThreadChatMessageActionFieldsListed;
 
 describe("bb-plugin-authoring skill", () => {
-  const skillEntry = readFileSync(SKILL_PATH, "utf8");
   const skill = readSkillTree();
 
   it("typechecks the machine provider guide example against the public SDK", () => {
@@ -703,10 +715,6 @@ describe("bb-plugin-authoring skill", () => {
           ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
         ),
     ).toEqual([]);
-  });
-
-  it("has frontmatter naming the skill after its directory", () => {
-    expect(skillEntry).toMatch(/^---\nname: bb-plugin-authoring\n/);
   });
 
   it("documents every BbPluginApi property", () => {

@@ -204,7 +204,9 @@ describe("CompactLongPressMenu", () => {
     longPress(row);
     settle();
     const item = screen.getByRole("menuitem", { name: "Rename" });
-    act(() => vi.advanceTimersByTime(2000));
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
     fireEvent.click(item);
     expect(onRename).not.toHaveBeenCalled();
     touchPointerDown(item);
@@ -380,7 +382,9 @@ describe("CompactLongPressMenu", () => {
     });
 
     rerender(renderMenu(true));
-    act(() => vi.advanceTimersByTime(800));
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
 
     expect(onOpenChange).not.toHaveBeenCalledWith(true);
   });

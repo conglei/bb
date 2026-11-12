@@ -68,6 +68,7 @@ for (const id of ["navigation", "thread-list"]) {
     isOrphanedBuiltin: false,
     publisherLabel: "BB Official",
     sourceDisplay: "Built-in demo frontend",
+    sourceNotice: null,
     updateState: {},
     enabled: true,
     description: pkg.bb.description,

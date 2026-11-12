@@ -332,7 +332,7 @@ const DropdownMenuItem = React.forwardRef<
       const anchored = compactPresentation === "anchored";
       return (
         <Comp
-          {...domProps}
+          {...(domProps as React.HTMLAttributes<HTMLElement>)}
           ref={ref as React.RefCallback<HTMLButtonElement> | null}
           type={asChild ? undefined : "button"}
           role={role}

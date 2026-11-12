@@ -59,8 +59,6 @@ import type {
   ThreadTimelineEditMessageHandler,
   ThreadTimelineInlineMessageEditor,
   ThreadTimelineForkMessageHandler,
-  ThreadTimelineLinkHandler,
-  ThreadTimelineLocalFileLinkHandler,
   ThreadTimelineImageViewSrcResolver,
   ThreadTimelineConsumerMessageAction,
   ThreadTimelinePluginMessageAction,
@@ -68,20 +66,19 @@ import type {
   UserAttachmentImageSrcResolver,
 } from "./types.js";
 import { ConversationMessageContent } from "./ConversationMessageContent.js";
-import {
-  MessageColumnWidthContext,
-  useMeasuredWidth,
-} from "./MessageActionBar.js";
 import { TimelineSelectionMenu } from "./TimelineSelectionMenu.js";
 import type { MessageProseSelection } from "./SelectableMessageProse.js";
 import { TimelineReasoningDetail } from "./TimelineReasoningDetail.js";
 import { ExpandableTimelineRow } from "./ExpandableTimelineRow.js";
 import { TimelineRowBodyPlaceholder } from "./TimelineRowBodyPlaceholder.js";
 import {
-  timelineDetailIdentity,
   usePreloadTimelineRowBody,
   useTimelineRowBodyRenderersReady,
 } from "./timeline-row-body-preload.js";
+import {
+  TimelineDetailSourceContext,
+  useTimelineDetailIdentity,
+} from "./timeline-detail-identity.js";
 import {
   TimelineActionRowHeader,
   TimelineLeadingIcon,
@@ -130,6 +127,7 @@ import { NESTED_TIMELINE_GROUP_LINE_CLASS_NAME } from "./timeline-nested-group-l
 import { GeneratedConversationMessage } from "./GeneratedConversationMessage.js";
 import { copyToClipboardWithToast } from "@/lib/clipboard";
 import { useThreadTimelineTurnSummaryDetails } from "@/hooks/queries/thread-panel-queries";
+import { useThreadTimelineNavigation } from "./ThreadTimelineNavigationContext.js";
 import { type ThreadTimelineTurnSummaryDetailsQueryIdentity } from "@/hooks/queries/query-keys";
 import {
   useSenderThreadMetadataById,
@@ -179,8 +177,6 @@ export interface ThreadTimelineRowsProps {
   onSelectionAddToChat?: ThreadTimelineAddToChatHandler;
   consumerMessageActions?: readonly ThreadTimelineConsumerMessageAction[];
   includePluginMessageActions?: boolean;
-  onOpenLink?: ThreadTimelineLinkHandler;
-  onOpenLocalFileLink?: ThreadTimelineLocalFileLinkHandler;
   onTitleAction?: TimelineTitleActionResolver;
   projectId?: string;
   resolveMentionLink?: PromptMentionLinkResolver;
@@ -195,7 +191,6 @@ export interface ThreadTimelineRowsProps {
   threadRuntimeDisplayStatus: ThreadRuntimeDisplayStatus;
   unreadDividerAutoScroll?: boolean;
   unreadDividerPlacement?: ThreadTimelineUnreadDividerPlacement | null;
-  workspaceRootPath: string | undefined;
 }
 
 interface TimelineRendererStaticContextValue {
@@ -216,8 +211,6 @@ interface TimelineRendererStaticContextValue {
         message: ThreadChatMessageReference,
       ) => void)
     | undefined;
-  onOpenLink: ThreadTimelineLinkHandler | undefined;
-  onOpenLocalFileLink: ThreadTimelineLocalFileLinkHandler | undefined;
   panel: AppPanelController;
   onTitleAction: TimelineTitleActionResolver | undefined;
   projectId: string | undefined;
@@ -225,7 +218,6 @@ interface TimelineRendererStaticContextValue {
   resolveMentionLink: PromptMentionLinkResolver | undefined;
   resolveUserAttachmentImageSrc: UserAttachmentImageSrcResolver | undefined;
   threadId: string | undefined;
-  workspaceRootPath: string | undefined;
 }
 
 interface TimelineTurnStateContextValue {
@@ -873,15 +865,12 @@ const ConversationRowContent = memo(function ConversationRowContent({
     messageMetadata,
     consumerMessageActions,
     reportProseSelection,
-    onOpenLink,
-    onOpenLocalFileLink,
     panel,
     onTitleAction,
     projectId,
     resolveMentionLink,
     resolveUserAttachmentImageSrc,
     threadId,
-    workspaceRootPath,
   } = useTimelineRendererStaticContext();
   const senderThreadMetadataById = useSenderThreadMetadataContext();
   if (
@@ -1004,8 +993,6 @@ const ConversationRowContent = memo(function ConversationRowContent({
           onAddToChat={onSelectionAddToChat}
           onCopyLink={onCopyLink}
           onEdit={onEdit}
-          onOpenLink={onOpenLink}
-          onOpenLocalFileLink={onOpenLocalFileLink}
           projectId={projectId}
           resolveMentionLink={resolveMentionLink}
           resolveUserAttachmentImageSrc={resolveUserAttachmentImageSrc}
@@ -1027,7 +1014,6 @@ const ConversationRowContent = memo(function ConversationRowContent({
           timestamp={row.startedAt}
           threadId={row.threadId}
           turnRequest={row.turnRequest}
-          workspaceRootPath={workspaceRootPath}
         />
       </>
     );
@@ -1058,8 +1044,6 @@ const ConversationRowContent = memo(function ConversationRowContent({
         onFork={onFork}
         forkDisabled={!canSpawnChild}
         onSelectProse={onSelectProse}
-        onOpenLink={onOpenLink}
-        onOpenLocalFileLink={onOpenLocalFileLink}
         pluginActions={rowPluginActions}
         actionMetadata={<MessageMetadata placement="actionRow" {...metadata} />}
         projectId={projectId}
@@ -1072,7 +1056,6 @@ const ConversationRowContent = memo(function ConversationRowContent({
         timestamp={row.startedAt}
         threadId={row.threadId}
         turnId={row.turnId}
-        workspaceRootPath={workspaceRootPath}
       />
     </>
   );
@@ -1126,7 +1109,7 @@ function TimelineExpandableBody(props: TimelineExpandableBodyProps) {
     preloadBody();
   }, [preloadBody]);
   const deferred = useTimelineDetailRows(
-    timelineDetailIdentity(row, threadId, itemId ?? ""),
+    useTimelineDetailIdentity(row, threadId, itemId ?? ""),
     itemId !== null,
   );
   const resolved =
@@ -1166,8 +1149,8 @@ function TimelineExpandableBodyContent({
   row,
   showAssistantMessageActions,
 }: TimelineExpandableBodyProps) {
-  const { workspaceRootPath, resolveImageViewSrc } =
-    useTimelineRendererStaticContext();
+  const { resolveImageViewSrc } = useTimelineRendererStaticContext();
+  const workspaceRootPath = useThreadTimelineNavigation()?.workspaceRootPath;
 
   switch (row.kind) {
     case "bundle-summary":
@@ -1375,7 +1358,7 @@ function LazyTurnRowBody({
 }: TurnRowBodyProps) {
   const { getViewRows, threadId } = useTimelineRendererStaticContext();
   const detail = useTimelineDetailRows(
-    timelineDetailIdentity(row, threadId, null),
+    useTimelineDetailIdentity(row, threadId, null),
     true,
   );
   const rows = detail.rows
@@ -1449,7 +1432,7 @@ function DeferredDelegationChildRows({
 }) {
   const { getViewRows, threadId } = useTimelineRendererStaticContext();
   const detail = useTimelineDetailRows(
-    timelineDetailIdentity(row, threadId, row.callId),
+    useTimelineDetailIdentity(row, threadId, row.callId),
     true,
   );
   const loadedRows = detail.rows
@@ -1502,13 +1485,9 @@ function DeferredDelegationChildRows({
 }
 
 function DelegationRowBody({ row }: { row: TimelineViewDelegationWorkRow }) {
-  const {
-    onOpenLink,
-    onOpenLocalFileLink,
-    projectId,
-    resolveUserAttachmentImageSrc,
-    workspaceRootPath,
-  } = useTimelineRendererStaticContext();
+  const { projectId, resolveUserAttachmentImageSrc } =
+    useTimelineRendererStaticContext();
+  const detailIdentity = useTimelineDetailIdentity(row, row.threadId, null);
   const delegationActive = row.status === "pending";
   const [lastInlineChildRows, setLastInlineChildRows] = useState(row.childRows);
   if (row.childRows !== null && row.childRows !== lastInlineChildRows) {
@@ -1521,43 +1500,42 @@ function DelegationRowBody({ row }: { row: TimelineViewDelegationWorkRow }) {
       streaming={delegationActive}
       className={NESTED_TIMELINE_GROUP_LINE_CLASS_NAME}
     >
-      <div className="flex flex-col gap-3">
-        {row.childRows === null ? (
-          <DeferredDelegationChildRows
-            fallbackRows={lastInlineChildRows}
-            row={row}
-          />
-        ) : row.childRows.length > 0 ? (
-          <TimelineRowsList
-            rows={row.childRows}
-            scopeActive={delegationActive}
-            showAssistantMessageActions={false}
-            compactActivityIntents={false}
-            spacing="nested"
-            unreadDividerAutoScroll={false}
-            unreadDividerPlacement={null}
-          />
-        ) : null}
-        {row.output.trim().length > 0 ? (
-          <ConversationMessageContent
-            attachments={null}
-            id={row.id}
-            onOpenLink={onOpenLink}
-            onOpenLocalFileLink={onOpenLocalFileLink}
-            projectId={projectId}
-            resolveUserAttachmentImageSrc={resolveUserAttachmentImageSrc}
-            role="assistant"
-            showActions={false}
-            mobileActionDisplay="overflow"
-            streaming={delegationActive}
-            text={row.output}
-            timestamp={row.startedAt}
-            threadId={row.threadId}
-            turnId={row.turnId}
-            workspaceRootPath={workspaceRootPath}
-          />
-        ) : null}
-      </div>
+      <TimelineDetailSourceContext.Provider value={detailIdentity}>
+        <div className="flex flex-col gap-3">
+          {row.childRows === null ? (
+            <DeferredDelegationChildRows
+              fallbackRows={lastInlineChildRows}
+              row={row}
+            />
+          ) : row.childRows.length > 0 ? (
+            <TimelineRowsList
+              rows={row.childRows}
+              scopeActive={delegationActive}
+              showAssistantMessageActions={false}
+              compactActivityIntents={false}
+              spacing="nested"
+              unreadDividerAutoScroll={false}
+              unreadDividerPlacement={null}
+            />
+          ) : null}
+          {row.output.trim().length > 0 ? (
+            <ConversationMessageContent
+              attachments={null}
+              id={row.id}
+              projectId={projectId}
+              resolveUserAttachmentImageSrc={resolveUserAttachmentImageSrc}
+              role="assistant"
+              showActions={false}
+              mobileActionDisplay="overflow"
+              streaming={delegationActive}
+              text={row.output}
+              timestamp={row.startedAt}
+              threadId={row.threadId}
+              turnId={row.turnId}
+            />
+          ) : null}
+        </div>
+      </TimelineDetailSourceContext.Provider>
     </TimelineDetailScroll>
   );
 }
@@ -1691,8 +1669,6 @@ function SentThreadMessageRow({
       attachmentItems={NO_ATTACHMENTS}
       automationLink={null}
       mentions={NO_MENTIONS}
-      onOpenLink={context.onOpenLink}
-      onOpenLocalFileLink={context.onOpenLocalFileLink}
       onTitleAction={context.onTitleAction}
       projectId={context.projectId}
       resolveMentionLink={context.resolveMentionLink}
@@ -1707,7 +1683,6 @@ function SentThreadMessageRow({
       threadId={context.threadId}
       timestamp={sentAt}
       turnRequest={ACCEPTED_MESSAGE}
-      workspaceRootPath={context.workspaceRootPath}
     />
   );
 }
@@ -1978,7 +1953,7 @@ function findUnreadDividerIndex({
   const firstNewIndex = rows.findIndex((row) =>
     isNewRowAfterCutoff(row, cutoffAt),
   );
-  if (firstNewIndex === -1 || unreadDividerPlacement.anchor !== "turn-answer") {
+  if (firstNewIndex === -1) {
     return firstNewIndex;
   }
   const settledTurnReplyIndexes = findSettledTurnReplyIndexes(
@@ -2213,19 +2188,9 @@ function TimelineRowsList({
     return keys;
   }, [items, rows, spacing, stableSearchExpandedRowIds, navigationTargetRowId]);
   const isTopLevelList = spacing === "top-level";
-  const { measureRef: messageColumnWidthSourceRef, width: messageColumnWidth } =
-    useMeasuredWidth({ enabled: isTopLevelList });
-  const messageColumnWidthValue = useMemo(
-    () => ({ width: messageColumnWidth }),
-    [messageColumnWidth],
-  );
   return (
     <TimelineSearchExpansionContext.Provider value={stableSearchExpandedRowIds}>
-      <MessageColumnWidthContext.Provider
-        value={isTopLevelList ? messageColumnWidthValue : null}
-      >
         <div
-          ref={isTopLevelList ? messageColumnWidthSourceRef : undefined}
           className={cn(
             "flex min-w-0 flex-col [&_button:not(:disabled)]:cursor-pointer",
             timelineRowsListGapClassName(spacing),
@@ -2296,7 +2261,6 @@ function TimelineRowsList({
             }}
           />
         </div>
-      </MessageColumnWidthContext.Provider>
     </TimelineSearchExpansionContext.Provider>
   );
 }
@@ -2498,8 +2462,6 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       consumerMessageActions:
         props.consumerMessageActions ?? EMPTY_CONSUMER_MESSAGE_ACTIONS,
       reportProseSelection,
-      onOpenLink: props.onOpenLink,
-      onOpenLocalFileLink: props.onOpenLocalFileLink,
       panel,
       onTitleAction: props.onTitleAction,
       projectId,
@@ -2507,7 +2469,6 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       resolveMentionLink: props.resolveMentionLink,
       resolveUserAttachmentImageSrc: props.resolveUserAttachmentImageSrc,
       threadId: props.threadId,
-      workspaceRootPath: props.workspaceRootPath,
     }),
     [
       props.canSpawnChild,
@@ -2523,8 +2484,6 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       props.consumerMessageActions,
       reportProseSelection,
       timelineThreadId,
-      props.onOpenLink,
-      props.onOpenLocalFileLink,
       panel,
       props.onTitleAction,
       projectId,
@@ -2532,7 +2491,6 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       props.resolveMentionLink,
       props.resolveUserAttachmentImageSrc,
       props.threadId,
-      props.workspaceRootPath,
     ],
   );
   const turnStateContextValue = useMemo<TimelineTurnStateContextValue>(

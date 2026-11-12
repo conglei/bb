@@ -17,7 +17,6 @@ import {
   INSTALL_MACHINE_SCRIPT_PATH,
   INSTALL_MACHINE_WINDOWS_SCRIPT_PATH,
 } from "./install-machine-asset.js";
-import { getExperiments } from "@bb/db";
 import { createNodeWebSocket } from "@hono/node-ws";
 import {
   declineWebSocketCompression,
@@ -60,6 +59,7 @@ import {
 } from "./services/plugins/plugin-service.js";
 import { setPluginAgentContributions } from "./services/plugins/plugin-agent-contributions.js";
 import { setPluginThreadEventEmitter } from "./services/plugins/plugin-thread-events.js";
+import { setPathPluginPreserver } from "./services/plugins/path-plugin-preservation.js";
 import { setPluginHookProvider } from "./services/plugins/plugin-hook-registry.js";
 import { setProjectPluginScopeSource } from "./services/plugins/project-plugin-scope.js";
 import {
@@ -88,11 +88,12 @@ import {
 } from "./internal/auth.js";
 import {
   captureTrustedRemoteAddress,
+  resolveRequestAccessRoute,
   resolveRequestAppSurface,
 } from "./request-context.js";
 import { runEventLoopWork } from "./services/system/event-loop-work.js";
 import { setTurnTelemetryDeps } from "./services/system/turn-telemetry.js";
-import { runWithTelemetryAppSurface } from "./services/system/telemetry.js";
+import { runWithTelemetryRequest } from "./services/system/telemetry.js";
 import {
   onClientSocketClose,
   onClientSocketMessage,
@@ -532,7 +533,13 @@ export function createApp(
   });
   app.use("*", async (context, next) => {
     captureTrustedRemoteAddress(context);
-    return runWithTelemetryAppSurface(resolveRequestAppSurface(context), next);
+    return runWithTelemetryRequest(
+      {
+        appSurface: resolveRequestAppSurface(context),
+        accessRoute: resolveRequestAccessRoute(context),
+      },
+      next,
+    );
   });
   app.use("*", async (context, next) => {
     const path = context.req.path;
@@ -790,6 +797,7 @@ export function createApp(
     hub: deps.hub,
     dbNotifier: deps.hub,
     logger: deps.logger,
+    walCheckpointer: deps.walCheckpointer,
     telemetry: deps.telemetry,
     pendingInteractions: deps.pendingInteractions,
     dataDir: deps.config.dataDir,
@@ -843,6 +851,9 @@ export function createApp(
   });
   setTurnTelemetryDeps(deps);
   setPluginThreadEventEmitter(pluginService.events);
+  setPathPluginPreserver(deps.db, (directory) =>
+    pluginService.preservePathPluginsInside(directory),
+  );
   // Bridge the dispatch pipeline to this service's hooks. Until this runs
   // there are no hooks, which is exactly the zero-overhead path.
   setPluginHookProvider(pluginService.hooks);
@@ -863,7 +874,7 @@ export function createApp(
   setEnvironmentProviderRecheckHandler((pluginId) => {
     invalidateEnvironmentProviderMachineAvailability();
     deps.hub.notifySystem(["config-changed"]);
-    void recheckEnvironmentProviderCreations(deps, pluginId);
+    recheckEnvironmentProviderCreations(deps, pluginId);
   });
   // Bridge runtime-config assembly to plugin skills + context (§4.4).
   setPluginAgentContributions(pluginService);
@@ -929,7 +940,7 @@ export function createApp(
   registerDesktopBrowserRoutes(publicApi, deps);
   registerTerminalRoutes(publicApi, deps);
   registerEnvironmentRoutes(publicApi, deps, pluginService);
-  registerThreadRoutes(publicApi, deps);
+  registerThreadRoutes(publicApi, deps, pluginService);
   registerQueueRoutes(publicApi, deps);
   registerSystemRoutes(publicApi, deps, pluginService);
   registerUiPreferenceRoutes(publicApi, deps);
@@ -1000,9 +1011,6 @@ export function createApp(
     "/ws",
     upgradeWebSocket((context) => {
       assertBrowserWebSocketAllowed(context);
-      if (!getExperiments(deps.db).websocketCompression) {
-        declineWebSocketCompression(context);
-      }
       return {
         onOpen: (_event, socket) => onClientSocketOpen(deps.hub, socket),
         onMessage: (event, socket) =>
@@ -1018,6 +1026,9 @@ export function createApp(
       assertBrowserWebSocketAllowed(context);
       declineWebSocketCompression(context);
       const terminalId = context.req.param("terminalId");
+      if (terminalId === undefined) {
+        throw new ApiError(404, "terminal_not_found", "missing terminal id");
+      }
       const query = terminalWebSocketQuerySchema.safeParse({
         outputAcks: context.req.query("outputAcks"),
         sinceSeq: context.req.query("sinceSeq"),

@@ -22,6 +22,14 @@
       "type": "registry:ui"
     },
     {
+      "name": "anchored-menu-placement",
+      "type": "registry:ui"
+    },
+    {
+      "name": "anchored-menu-shell",
+      "type": "registry:ui"
+    },
+    {
       "name": "aspect-ratio",
       "type": "registry:ui"
     },
@@ -126,6 +134,10 @@
       "type": "registry:ui"
     },
     {
+      "name": "haptics",
+      "type": "registry:lib"
+    },
+    {
       "name": "hover-card",
       "type": "registry:ui"
     },
@@ -143,6 +155,10 @@
     },
     {
       "name": "inline-rename-editor",
+      "type": "registry:ui"
+    },
+    {
+      "name": "inline-rename-presentation-cases",
       "type": "registry:ui"
     },
     {
@@ -242,6 +258,10 @@
       "type": "registry:ui"
     },
     {
+      "name": "rename-session-dialog",
+      "type": "registry:ui"
+    },
+    {
       "name": "resizable",
       "type": "registry:ui"
     },
@@ -283,6 +303,14 @@
     },
     {
       "name": "responsive-overlay",
+      "type": "registry:ui"
+    },
+    {
+      "name": "schedule-time",
+      "type": "registry:lib"
+    },
+    {
+      "name": "schedule-time-fields",
       "type": "registry:ui"
     },
     {

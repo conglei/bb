@@ -32,6 +32,9 @@ const PERSONAL_PROJECT: Project = {
   kind: "personal",
   name: "Personal",
   gitRemoteUrl: null,
+  icon: null,
+  ownerKind: "user",
+  ownerPluginId: null,
   createdAt: 1,
   updatedAt: 1,
 };

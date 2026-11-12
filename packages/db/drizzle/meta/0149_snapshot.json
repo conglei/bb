@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "a87e6c09-ec5f-45a4-a5f8-79bd2373a61e",
-  "prevId": "fb0500ec-449a-43f7-a75d-0dc68a02487a",
+  "id": "e2dcfab4-f075-4425-b3c6-259b9a4723d3",
+  "prevId": "a6625a04-db66-4949-9ad2-66da7b1e11e2",
   "tables": {
     "app_settings": {
       "name": "app_settings",
@@ -2525,142 +2525,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "plugin_project_kv": {
-      "name": "plugin_project_kv",
-      "columns": {
-        "plugin_id": {
-          "name": "plugin_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "value": {
-          "name": "value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "plugin_project_kv_project_id_projects_id_fk": {
-          "name": "plugin_project_kv_project_id_projects_id_fk",
-          "tableFrom": "plugin_project_kv",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "plugin_project_kv_plugin_id_project_id_key_pk": {
-          "columns": [
-            "plugin_id",
-            "project_id",
-            "key"
-          ],
-          "name": "plugin_project_kv_plugin_id_project_id_key_pk"
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "plugin_project_settings": {
-      "name": "plugin_project_settings",
-      "columns": {
-        "plugin_id": {
-          "name": "plugin_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "value": {
-          "name": "value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "plugin_project_settings_project_id_projects_id_fk": {
-          "name": "plugin_project_settings_project_id_projects_id_fk",
-          "tableFrom": "plugin_project_settings",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "plugin_project_settings_plugin_id_project_id_key_pk": {
-          "columns": [
-            "plugin_id",
-            "project_id",
-            "key"
-          ],
-          "name": "plugin_project_settings_plugin_id_project_id_key_pk"
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "plugin_schedules": {
       "name": "plugin_schedules",
       "columns": {
@@ -3276,66 +3140,6 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "project_plugin_states": {
-      "name": "project_plugin_states",
-      "columns": {
-        "project_id": {
-          "name": "project_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "plugin_id": {
-          "name": "plugin_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "project_plugin_states_project_id_projects_id_fk": {
-          "name": "project_plugin_states_project_id_projects_id_fk",
-          "tableFrom": "project_plugin_states",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "project_plugin_states_project_id_plugin_id_pk": {
-          "columns": [
-            "project_id",
-            "plugin_id"
-          ],
-          "name": "project_plugin_states_project_id_plugin_id_pk"
-        }
-      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -3957,6 +3761,28 @@
           "notNull": false,
           "autoincrement": false
         },
+        "delivery_mode": {
+          "name": "delivery_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'steer'"
+        },
+        "coalesce_key": {
+          "name": "coalesce_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "coalesce_state": {
+          "name": "coalesce_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "claimed_at": {
           "name": "claimed_at",
           "type": "integer",
@@ -4036,6 +3862,15 @@
             "id"
           ],
           "isUnique": false
+        },
+        "queued_thread_messages_coalesce_idx": {
+          "name": "queued_thread_messages_coalesce_idx",
+          "columns": [
+            "thread_id",
+            "coalesce_key"
+          ],
+          "isUnique": false,
+          "where": "\"queued_thread_messages\".\"coalesce_key\" IS NOT NULL"
         },
         "queued_thread_messages_wait_holder_idx": {
           "name": "queued_thread_messages_wait_holder_idx",

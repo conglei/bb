@@ -14,6 +14,9 @@ import {
   dropProjectIconColumn,
   dropProjectOwnerColumns,
   dropThreadParentNotificationsColumn,
+  dropQueuedMessageDeliveryColumns,
+  dropPluginFailureLabelColumns,
+  dropThreadStatusChangedAtColumn,
   dropQueuedMessageEditHeldUntilColumn,
 } from "./helpers/rewind.js";
 
@@ -56,6 +59,9 @@ function upgradeDatabase(overrides: AppKeybindingOverrides | undefined) {
   dropQueuedMessageEditHeldUntilColumn(db);
   dropMarketplaceSourceGitSubdirectoryColumn(db);
   dropThreadParentNotificationsColumn(db);
+  dropQueuedMessageDeliveryColumns(db);
+  dropThreadStatusChangedAtColumn(db);
+  dropPluginFailureLabelColumns(db);
   dropProjectOwnerColumns(db);
   dropProjectIconColumn(db);
   db.$client
